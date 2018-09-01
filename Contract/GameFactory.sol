@@ -72,7 +72,7 @@ contract GameFactory is Mortal {
 
     constructor() public {
         spaceShipContract = address(0);
-        version = "1.3.AS";
+        version = "1.3.1-AS";
         candidate = address(0);
         endBlock = 0;
         gameReady = false;
