@@ -10,11 +10,34 @@ contract GameFactory is Mortal {
     address spaceShipContract;
     address candidate;
     address winner;
+    address admin;
     SpaceShipInterface spaceShipInterface;
     bool gameReady;
     uint gameLaunch;
     uint gamePlayValue;
     uint endBlock;
+
+
+    using AddressUtils for address;
+
+    modifier onlyOwnerOrAdmin() {
+        require(msg.sender == owner || msg.sender == admin);
+        _;
+    }
+
+    function setAdmin(address _admin)
+        external
+        onlyOwner
+    {
+        admin = _admin;
+    }
+
+    function delAdmin()
+        external
+        onlyOwner
+    {
+        admin = address(0);
+    }
 
 
     function getGame()
@@ -51,9 +74,6 @@ contract GameFactory is Mortal {
         _endBlock = endBlock;
         _reward = address(this).balance;
     }
-
-
-    using AddressUtils for address;
 
     modifier isGameReady() {
         require(gameReady);

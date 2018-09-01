@@ -194,6 +194,36 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         shipsId.push(_ship);
     }
 
+
+
+    /*
+     * Esta funcion es solamente durante la etapa de desarrollo
+     */
+    function adminSetShipVars(uint _ship, uint x, uint y, uint[12] pLevel, uint[2] rLevel, uint[3] bLevel, uint[3] stock)
+        external
+        onlyOwnerOrAdmin
+    {
+        GameSpaceShip storage ship = shipsInGame[_ship];
+        uint b = block.number;
+
+        require(isShipInGame[_ship]);
+
+        unsetInMapPosition(ship.x,s.y);
+        ship.lastHarvest = b;
+        setInMapPosition(_ship,x,y);
+        ship.resources.energyPanelLevel = pLevel;
+        ship.resources.grapheneCollectorLevel = rLeve[0];
+        ship.resources.metalCollectorLevel = rLevel[1];
+        ship.buildings.warehouseLevel = bLevel[0];
+        ship.buildings.hangarLevel = bLevel[1];
+        ship.buildings.cannonLevel = bLevel[2];
+        ship.warehouse.energy = stock[0];
+        ship.warehouse.graphene = stock[1];
+        ship.warehouse.metal = stock[2];
+    }
+
+
+
     function unplaceShip(uint _ship)
         external
         onlySpaceShipContract
@@ -338,12 +368,6 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         _;
     }
 
-
-    /*------------------------------------------------------------------------------
-     *                          External Functions
-     *
-     *------------------------------------------------------------------------------
-     */
 
     function attackShip(uint _from, uint _to)
         external
