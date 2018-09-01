@@ -7,7 +7,7 @@ import "./GameFactory.sol";
 import "./UtilsLib.sol";
 
 
-contract GameShipFactory_linked is GameFactory, GameSpacialPort, GameShipResources {
+contract GameShipFactory_linked is GameFactory, GameSpacialPort {
 
     struct FleetDesign {
         uint fleetType;
@@ -51,6 +51,12 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort, GameShipResourc
         uint warehouseLevel;
         uint hangarLevel;
         uint cannonLevel;
+    }
+
+    struct Resources {
+        uint[12] energyPanelLevel;
+        uint grapheneCollectorLevel;
+        uint metalCollectorLevel;
     }
 
     struct GameSpaceShip {
@@ -1397,6 +1403,54 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort, GameShipResourc
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
         return (ship.fleet.fleetDesigned && ship.fleet.fleetEndProduction <= block.number);
+    }
+
+
+    function _getResourceLevel (Resources storage r) 
+        internal 
+        view 
+        returns(uint[12],uint,uint) 
+    {
+        return
+        (
+            r.energyPanelLevel,
+            r.grapheneCollectorLevel,
+            r.metalCollectorLevel
+        );
+    }
+    
+    function _getResourceLevelByType( Resources storage r, uint _type, uint _index)
+        internal
+        view
+        returns(uint)
+    {
+        if (_type == 0) {
+            return r.energyPanelLevel[_index];
+        }
+        if (_type == 1) {
+            return r.grapheneCollectorLevel;
+        }
+        if (_type == 2) {
+            return r.metalCollectorLevel;
+        }
+        return 0;
+    }
+
+    function _addResourceLevel (Resources storage r, uint _type, uint _index) 
+        internal 
+    {
+        if (_type == 0) {
+            r.energyPanelLevel[_index]++;
+            return;
+        }
+        if (_type == 1) { 
+            r.grapheneCollectorLevel++;
+            return;
+        }
+        if (_type == 2) { 
+            r.metalCollectorLevel++;
+            return;
+        }
     }
 
 
