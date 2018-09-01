@@ -842,18 +842,15 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         expend(_from,cost,0,0);
         from.lock.fireCannon = lock;
 
-        /*
-         * Calcula el damage
-         */
-        to.damage = to.damage + damage;
-
-        if (to.damage >= 100) {
+        if (to.damage + damage >= 100) {
             destroyShip(_to);
             emit FireCannonEvent(_from,_to,100,true);
         }
-        else
+        else {
+            collectResourcesAndSub(_to, 0,0,0);
+            to.damage = to.damage + damage;
             emit FireCannonEvent(_from,_to,to.damage,false);
-
+        }
     }
 
 
@@ -1133,7 +1130,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             s.lastHarvest <= block.number && 
             energy >= e && graphene >= g && metal >= m    
         );    // Pensar Mejor esta linea
-        s.lastHarvest = block.number;    
+        s.lastHarvest = block.number;   
         energy -= e;
         graphene -= g;
         metal -= m;
