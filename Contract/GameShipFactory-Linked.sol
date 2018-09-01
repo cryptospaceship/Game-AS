@@ -574,7 +574,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort, GameShipResourc
         uint metal;
         uint lock;
         uint level = _getBuildingLevelByType(shipsInGame[_ship].buildings, _type) + 1;
-        require(level < 4);
+        require(level <= 4);
         (energy,graphene,metal,lock) = GameLib.getUpgradeBuildingCost(_type,level,shipsInGame[_ship].damage);
         shipsInGame[_ship].lock.building = lock;
         expend(_ship,energy,graphene,metal);
@@ -591,7 +591,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort, GameShipResourc
         uint lock;
         uint level = _getResourceLevelByType(s.resources, _type, _index) + 1;
         
-        require(level < 10);
+        require(level <= 10);
         (energy,graphene,metal,lock) = GameLib.getUpgradeResourceCost(_type,level,s.damage);
 
         s.lock.resource = lock;
