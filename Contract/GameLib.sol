@@ -60,7 +60,7 @@ library GameLib {
      * @return graphene: Produccion total de graphene
      * @return metal: Produccion total de metales
      */
-    function getProduction(uint[12] panels, uint gCollector, uint mCollector, uint[2] density, uint damage)
+    function getProduction(uint[12] panels, uint gCollector, uint mCollector, uint[3] density, uint damage)
         external
         pure
         returns(uint energy, uint graphene, uint metal)
@@ -71,8 +71,8 @@ library GameLib {
         for (i = 0; i < 12; i++) {
             energy = energy + getProductionByLevel(panels[i]);
         }
-        graphene = getProductionByLevel(gCollector) * density[0];
-        metal = getProductionByLevel(mCollector) * density[1];
+        graphene = getProductionByLevel(gCollector) * density[1];
+        metal = getProductionByLevel(mCollector) * density[2];
 
         if (damage != 0) {
             s = 100 - damage;

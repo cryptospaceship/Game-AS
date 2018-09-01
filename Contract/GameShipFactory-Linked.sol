@@ -1237,7 +1237,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
                 ship.resources.energyPanelLevel,
                 ship.resources.grapheneCollectorLevel,
                 ship.resources.metalCollectorLevel,
-                [ship.resourceDensity[1], ship.resourceDensity[2]],
+                [0,ship.resourceDensity[1], ship.resourceDensity[2]],
                 ship.damage
             );
             energy = energy - getFleetConsumption(_ship);
