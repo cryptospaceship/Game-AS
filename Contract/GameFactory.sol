@@ -125,7 +125,7 @@ contract GameFactory is Mortal {
 
     function setGameAttributes(address _shipContract, uint _startAt)
         external
-        onlyOwner
+        onlyOwnerOrAdmin
     {
         setSpaceShipContract(_shipContract);
         if (_startAt == 0)
