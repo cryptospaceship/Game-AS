@@ -151,13 +151,12 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         GameSpaceShip storage gss = shipsInGame[_ship];
         (gss.shipName,,inGame,gss.owner,,,,,) = spaceShipInterface.getShip(_ship);
         
-        require(inGame == false);
-
-        require(msg.sender == gss.owner);
-
-        require(playing[gss.owner] == false);
-
-        require(spaceShipInterface.setGame(_ship));
+        require(
+            inGame == false &&
+            msg.sender == gss.owner && 
+            playing[gss.owner] == false &&
+            spaceShipInterface.setGame(_ship)
+        );
 
         /**
          * Init wharehouse Stock
