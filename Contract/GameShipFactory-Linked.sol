@@ -2,7 +2,6 @@ pragma solidity 0.4.24;
 
 import "./GameSpacialPort.sol";
 import "./GameLib.sol";
-import "./GameShipResources.sol";
 import "./GameFactory.sol";
 import "./UtilsLib.sol";
 
