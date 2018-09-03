@@ -211,6 +211,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         setInMapPosition(_ship,x,y);
         ship.x = x;
         ship.y = y;
+        (ship.resourceDensity[0],ship.resourceDensity[1],ship.resourceDensity[2]) = getResourceDensity(x,y);
         ship.resources.energyPanelLevel = pLevel;
         ship.resources.grapheneCollectorLevel = rLevel[0];
         ship.resources.metalCollectorLevel = rLevel[1];
