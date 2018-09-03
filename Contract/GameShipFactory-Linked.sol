@@ -206,11 +206,11 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
 
         require(isShipInGame[_ship]);
 
-        unsetInMapPosition(ship.x,s.y);
+        unsetInMapPosition(ship.x,ship.y);
         ship.lastHarvest = b;
         setInMapPosition(_ship,x,y);
         ship.resources.energyPanelLevel = pLevel;
-        ship.resources.grapheneCollectorLevel = rLeve[0];
+        ship.resources.grapheneCollectorLevel = rLevel[0];
         ship.resources.metalCollectorLevel = rLevel[1];
         ship.buildings.warehouseLevel = bLevel[0];
         ship.buildings.hangarLevel = bLevel[1];
