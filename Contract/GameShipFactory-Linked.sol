@@ -53,7 +53,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
     }
 
     struct Resources {
-        uint[12] energyPanelLevel;
+        uint[6] energyPanelLevel;
         uint grapheneCollectorLevel;
         uint metalCollectorLevel;
     }
@@ -197,7 +197,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
     /*
      * Esta funcion es solamente durante la etapa de desarrollo
      */
-    function adminSetShipVars(uint _ship, uint x, uint y, uint[12] pLevel, uint[2] rLevel, uint[3] bLevel, uint[3] stock)
+    function adminSetShipVars(uint _ship, uint x, uint y, uint[6] pLevel, uint[2] rLevel, uint[3] bLevel, uint[3] stock)
         external
         onlyOwnerOrAdmin
     {
@@ -342,7 +342,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
     
     modifier validResourceType(uint _type, uint _index) {
         require(
-            _type <= 2 && _index <= 11
+            _type <= 2 && _index <= 5
         );
         _;
     }
@@ -504,10 +504,6 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         onlyIfCanBuildFleet(_ship)
     {
         FleetCost storage ac = shipsInGame[_ship].fleet.fleetCost;    
-        uint energyProduction;
-
-        (energyProduction,,) = getProductionPerBlock(_ship);
-        require(size <= energyProduction);
         expend(_ship,ac.energy*size,ac.graphene*size,ac.metal*size);
         addFleetToProduction(_ship,size);
     }
@@ -715,7 +711,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             uint energy,
             uint graphene,
             uint metal,
-            uint[12] memory energyLevel,
+            uint[6] memory energyLevel,
             uint grapheneCollectorLevel,
             uint metalCollectorLevel
         )
@@ -826,6 +822,8 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         uint cost;
         uint lock;
         uint damage;
+        uint energy;
+        uint cons;
         /*
          * Trae la distancia
          */
@@ -849,6 +847,11 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         else {
             collectResourcesAndSub(_to, 0,0,0);
             to.damage = to.damage + damage;
+            (energy,,) = getProductionPerBlock(_to);
+            cons = getFleetConsumption(_to);
+            if (energy < cons) {
+                killFleet(_to,cons-energy);
+            }
             emit FireCannonEvent(_from,_to,to.damage,false);
         }
     }
@@ -1152,13 +1155,30 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         
         (build, end) = GameLib.getFleetEndProduction(
             size,
-            getFleetSize(_ship),
-            shipsInGame[_ship].buildings.hangarLevel,
+            shipsInGame[_ship].resources.energyPanelLevel,
+            getFleetConsumption(_ship),
             shipsInGame[_ship].damage
         );
         require(build);
         a.fleetInProduction = size;
         a.fleetEndProduction = end;
+    }
+
+    function killFleet(uint _ship, uint size)
+        internal
+    {
+        Fleet storage a = shipsInGame[_ship].fleet;
+        uint left;
+        uint prod = a.fleetInProduction;
+        if (prod > 0) {
+            if (prod > size) 
+                a.fleetInProduction -= size;
+            else {
+                left = size - prod;
+                a.fleetInProduction = 0;
+                a.fleetSize -= left;
+            }
+        }
     }
 
     function inWarehouse(uint _ship, uint e, uint g, uint m)
@@ -1430,7 +1450,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
     function _getResourceLevel (Resources storage r) 
         internal 
         view 
-        returns(uint[12],uint,uint) 
+        returns(uint[6],uint,uint) 
     {
         return
         (

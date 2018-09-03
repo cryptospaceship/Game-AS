@@ -51,7 +51,7 @@ library GameLib {
 
     /**
      * @dev getProduction(): Calcula la produccion total de la nave
-     * @param panels Array de 12 posiciones, con el nivel de cada panel
+     * @param panels Array de 6 posiciones, con el nivel de cada panel
      * @param gCollector Nivel del colector de Graphene
      * @param mCollector Nivel del colector de metales
      * @param density Array de dos posisciones con la densidad de Graphene y Metal
@@ -60,26 +60,37 @@ library GameLib {
      * @return graphene: Produccion total de graphene
      * @return metal: Produccion total de metales
      */
-    function getProduction(uint[12] panels, uint gCollector, uint mCollector, uint[3] density, uint damage)
+    function getProduction(uint[6] panels, uint gCollector, uint mCollector, uint[3] density, uint damage)
         external
         pure
         returns(uint energy, uint graphene, uint metal)
     {
         uint i;
         uint s;
-        energy = 0;
-        for (i = 0; i < 12; i++) {
-            energy = energy + getProductionByLevel(panels[i]);
-        }
         graphene = getProductionByLevel(gCollector) * density[1];
         metal = getProductionByLevel(mCollector) * density[2];
 
         if (damage != 0) {
             s = 100 - damage;
-            energy = s * energy / 100;
             graphene = s * graphene / 100;
             metal = s * metal / 100;
         }
+        energy = getEnergyProduction(panels,0,damage);
+    }
+
+    function getEnergyProduction(uint[6] panels, uint eConsumption, uint damage)
+        internal
+        pure
+        returns(uint energy)
+    {
+        energy = 0;
+        for (i = 0; i < 6; i++) {
+            energy = energy + (getProductionByLevel(panels[i]) * 2);
+        }
+        if (damage != 0) {
+            energy = (100 - damage) * energy / 100;
+        }
+        energy = energy - eConsumption;
     }
 
 
@@ -127,7 +138,7 @@ library GameLib {
         (aRemain,dRemain) = shipCombatCalcInternal(attacker[0],attacker[1],attacker[3],defender[0],defender[1],defender[2]);
     }
     
-    function getFleetEndProduction(uint size, uint actualSize, uint hangarLevel, uint damage)
+    function getFleetEndProduction(uint size, uint[6] ePanels, uint eConsumption, uint damage)
         external
         view
         returns(bool,uint)
@@ -138,7 +149,8 @@ library GameLib {
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
         }
-        return ((size + actualSize <= hangarLevel * 100),(block.number + ret));
+
+        return ((size <= getEnergyProduction(ePanels, eConsumption, damage)),(block.number + ret));
     }
 
     function getFleetCost(uint _attack, uint _defense, uint _distance, uint _load)
@@ -213,9 +225,9 @@ library GameLib {
     {
         uint24[11] memory resourceCost = [0,1200,2520,5292,11113,23338,49009,102919,216131,453874,953136];
         if (_type == 0) {
-            energy = resourceCost[_level]/2;
-            graphene = resourceCost[_level];
-            metal = resourceCost[_level];
+            energy = resourceCost[_level];
+            graphene = resourceCost[_level]*2;
+            metal = resourceCost[_level]*2;
         } else if (_type == 1) {
             energy = resourceCost[_level];
             graphene = resourceCost[_level]/2;
