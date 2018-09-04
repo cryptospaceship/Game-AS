@@ -60,12 +60,11 @@ library GameLib {
      * @return graphene: Produccion total de graphene
      * @return metal: Produccion total de metales
      */
-    function getProduction(uint[6] panels, uint gCollector, uint mCollector, uint[3] density, uint damage)
+    function getProduction(uint[6] panels, uint gCollector, uint mCollector, uint[3] density, uint eConsumption, uint damage)
         external
         pure
         returns(uint energy, uint graphene, uint metal)
     {
-        uint i;
         uint s;
         graphene = getProductionByLevel(gCollector) * density[1];
         metal = getProductionByLevel(mCollector) * density[2];
@@ -75,15 +74,14 @@ library GameLib {
             graphene = s * graphene / 100;
             metal = s * metal / 100;
         }
-        energy = getEnergyProduction(panels,0,damage);
+        energy = getEnergyProduction(panels,eConsumption,damage);
     }
 
-    function getProduction(bytes8 rLevel, bytes3 density, uint damage)
+    function getProduction(bytes8 rLevel, bytes3 density, uint eConsumption, uint damage)
         external
         pure
         returns(uint energy, uint graphene, uint metal)
     {
-        uint i;
         uint s;
         graphene = getProductionByLevel(uint(rLevel[6])) * uint(density[1]);
         metal = getProductionByLevel(uint(rLevel[7])) * uint(density[2]);
@@ -93,7 +91,7 @@ library GameLib {
             graphene = s * graphene / 100;
             metal = s * metal / 100;
         }
-        energy = getEnergyProduction(rLevel,0,damage);
+        energy = getEnergyProduction(rLevel, eConsumption,damage);
     }
 
     function getEnergyProduction(bytes8 panels, uint eConsumption, uint damage)
@@ -101,6 +99,7 @@ library GameLib {
         pure
         returns(uint energy)
     {
+        uint i;
         energy = 0;
         for (i = 0; i < 6; i++) {
             energy = energy + (getProductionByLevel(uint(panels[i])) * 2);
@@ -116,6 +115,7 @@ library GameLib {
         pure
         returns(uint energy)
     {
+        uint i;
         energy = 0;
         for (i = 0; i < 6; i++) {
             energy = energy + (getProductionByLevel(panels[i]) * 2);
@@ -171,7 +171,7 @@ library GameLib {
         (aRemain,dRemain) = shipCombatCalcInternal(attacker[0],attacker[1],attacker[3],defender[0],defender[1],defender[2]);
     }
     
-    function getFleetEndProduction(uint size, uint[6] ePanels, uint eConsumption, uint damage)
+    function getFleetEndProduction(uint size, uint hangarLevel, uint[6] ePanels, uint eConsumption, uint damage)
         external
         view
         returns(bool,uint)
@@ -185,6 +185,7 @@ library GameLib {
 
         return ((size <= getEnergyProduction(ePanels, eConsumption, damage)),(block.number + ret));
     }
+
 
     function getFleetCost(uint _attack, uint _defense, uint _distance, uint _load)
         external

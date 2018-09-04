@@ -1156,6 +1156,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         
         (build, end) = GameLib.getFleetEndProduction(
             size,
+            shipsInGame[_ship].buildings.hangarLevel,
             shipsInGame[_ship].resources.energyPanelLevel,
             getFleetConsumption(_ship),
             shipsInGame[_ship].damage
@@ -1259,9 +1260,9 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
                 ship.resources.grapheneCollectorLevel,
                 ship.resources.metalCollectorLevel,
                 [0,ship.resourceDensity[1], ship.resourceDensity[2]],
+                getFleetConsumption(_ship),
                 ship.damage
             );
-            energy = energy - getFleetConsumption(_ship);
         }
     }
 
