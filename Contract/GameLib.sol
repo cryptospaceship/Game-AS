@@ -78,6 +78,39 @@ library GameLib {
         energy = getEnergyProduction(panels,0,damage);
     }
 
+    function getProduction(bytes8 rLevel, bytes3 density, uint damage)
+        external
+        pure
+        returns(uint energy, uint graphene, uint metal)
+    {
+        uint i;
+        uint s;
+        graphene = getProductionByLevel(uint(rLevel[6])) * uint(density[1]);
+        metal = getProductionByLevel(uint(rLevel[7])) * uint(density[2]);
+
+        if (damage != 0) {
+            s = 100 - damage;
+            graphene = s * graphene / 100;
+            metal = s * metal / 100;
+        }
+        energy = getEnergyProduction(rLevel,0,damage);
+    }
+
+    function getEnergyProduction(bytes8 panels, uint eConsumption, uint damage)
+        internal
+        pure
+        returns(uint energy)
+    {
+        energy = 0;
+        for (i = 0; i < 6; i++) {
+            energy = energy + (getProductionByLevel(uint(panels[i])) * 2);
+        }
+        if (damage != 0) {
+            energy = (100 - damage) * energy / 100;
+        }
+        energy = energy - eConsumption;
+    }
+
     function getEnergyProduction(uint[6] panels, uint eConsumption, uint damage)
         internal
         pure
