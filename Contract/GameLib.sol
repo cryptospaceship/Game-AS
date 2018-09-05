@@ -2,6 +2,25 @@ pragma solidity 0.4.25;
 
 library GameLib {
 
+    enum ResourceIndex {
+        INDEX_UPGRADING,
+        PANEL_1,
+        PANEL_2,
+        PANEL_3,
+        PANEL_4,
+        PANEL_5,
+        PANEL_6,
+        GRAPHENE,
+        METAL
+    }
+
+    enum BuildingIndex {
+        INDEX_UPGRADING,
+        WAREHOUSE,
+        HANGAR,
+        CANNON
+    }
+
     /**
      * @dev checkRange(): Comprueba si la nave principal se puede mover determinada
      * distancia
@@ -50,41 +69,24 @@ library GameLib {
     }
 
     /**
-     * @dev getProduction(): Calcula la produccion total de la nave
-     * @param panels Array de 6 posiciones, con el nivel de cada panel
-     * @param gCollector Nivel del colector de Graphene
-     * @param mCollector Nivel del colector de metales
+     * @dev getProductionInternal(): Calcula la produccion total de la nave
+     * @param rLevel Array de 8 posiciones, con el nivel de cada panel 6 primera posiciones y las 
+     * otras dos para el colector de grafeno y para el colector de metales
      * @param density Array de dos posisciones con la densidad de Graphene y Metal
+     * @param eConsumption consumo de la nave
      * @param damage Daño de la nave principal (Afecta la produccion)
      * @return energy: Produccion total de energia
      * @return graphene: Produccion total de graphene
      * @return metal: Produccion total de metales
      */
-    function getProduction(uint[6] panels, uint gCollector, uint mCollector, uint[3] density, uint eConsumption, uint damage)
-        external
+    function getProductionInternal(uint[9] rLevel, uint[3] density, uint eConsumption, uint damage)
+        internal
         pure
         returns(uint energy, uint graphene, uint metal)
     {
         uint s;
-        graphene = getProductionByLevel(gCollector) * density[1];
-        metal = getProductionByLevel(mCollector) * density[2];
-
-        if (damage != 0) {
-            s = 100 - damage;
-            graphene = s * graphene / 100;
-            metal = s * metal / 100;
-        }
-        energy = getEnergyProduction(panels,eConsumption,damage);
-    }
-
-    function getProduction(bytes8 rLevel, bytes3 density, uint eConsumption, uint damage)
-        external
-        pure
-        returns(uint energy, uint graphene, uint metal)
-    {
-        uint s;
-        graphene = getProductionByLevel(uint(rLevel[6])) * uint(density[1]);
-        metal = getProductionByLevel(uint(rLevel[7])) * uint(density[2]);
+        graphene = getProductionByLevel(rLevel[uint(ResourceIndex.GRAPHENE)]) * density[1];
+        metal = getProductionByLevel(rLevel[uint(ResourceIndex.METAL)]) * density[2];
 
         if (damage != 0) {
             s = 100 - damage;
@@ -94,30 +96,111 @@ library GameLib {
         energy = getEnergyProduction(rLevel, eConsumption,damage);
     }
 
-    function getEnergyProduction(bytes8 panels, uint eConsumption, uint damage)
-        internal
-        pure
-        returns(uint energy)
+    /**
+     * @dev getProduction(): Calcula la produccion total de la nave
+     * @param rLevel Array de 8 posiciones, con el nivel de cada panel 6 primera posiciones y las 
+     * otras dos para el colector de grafeno y para el colector de metales
+     * @param density Array de dos posisciones con la densidad de Graphene y Metal
+     * @param eConsumption consumo de la nave
+     * @param damage Daño de la nave principal (Afecta la produccion)
+     * @return energy: Produccion total de energia
+     * @return graphene: Produccion total de graphene
+     * @return metal: Produccion total de metales
+     */
+    function getProduction(uint[9] rLevel, uint endUpgrade, uint[3] density, uint eConsumption, uint damage)
+        external
+        view
+        returns(uint energy, uint graphene, uint metal)
     {
-        uint i;
-        energy = 0;
-        for (i = 0; i < 6; i++) {
-            energy = energy + (getProductionByLevel(uint(panels[i])) * 2);
-        }
-        if (damage != 0) {
-            energy = (100 - damage) * energy / 100;
-        }
-        energy = energy - eConsumption;
+        if (endUpgrade > block.number)
+            (energy,graphene,metal) = getProductionInternal(subResourceLevel(rLevel),density,eConsumption,damage);
+        else
+            (energy,graphene,metal) = getProductionInternal(rLevel,density,eConsumption,damage);        
     }
 
-    function getEnergyProduction(uint[6] panels, uint eConsumption, uint damage)
+    function getUnharvestResources(uint[9] rLevel, uint endUpgrade, uint[3] density, uint eConsumption, uint damage, uint lastHarvest)
+        external
+        view
+        returns(uint energy, uint graphene, uint metal)
+    {
+        uint b = block.number;
+        uint diff;
+        uint e;
+        uint g;
+        uint m;
+
+        energy = 0;
+        graphene = 0;
+        metal = 0;
+
+        if (endUpgrade > b) {
+            /*
+             * En este punto todavia no se termino de hacer el upgrade
+             * entonces quiere decir que hay un nivel que no hay que contemplarlo
+             * que es el que se esta ampliando
+             */
+            (e,g,m) = getProductionInternal(subResourceLevel(rLevel),density,eConsumption,damage);
+            diff = b - lastHarvest;
+
+        } else {
+            /*
+             * Ya se termino de hacer el upgrade, y ahora hay que preguntarse cuando 
+             * se termino de realizar el upgrade, antes del last harvest o despues
+             */
+            if (endUpgrade > lastHarvest) {
+                /*
+                 * El upgrade termino luego de la ultima "cosecha", entonces hay que calcular
+                 * la produccion de dos maneras:
+                 * 1- Desde la ultima "cosecha" hasta que termino el upgrade
+                 * 2- Desde que termino el upgrade hasta el bloque actual
+                 */
+
+                // 1
+                diff = endUpgrade - lastHarvest;
+                (e,g,m) = getProductionInternal(subResourceLevel(rLevel),density,eConsumption,damage);
+                energy = e * diff;
+                graphene = g * diff;
+                metal = m * diff;
+
+                // 2
+                diff = b - endUpgrade;
+                (e,g,m) = getProductionInternal(rLevel,density,eConsumption,damage);
+            }
+            else {
+                /*
+                 * La ultima cosecha fue posterior a la cuando finalizo la construccion
+                 */
+                diff = b - lastHarvest;
+                (energy,graphene,metal) = getProductionInternal(rLevel,density,eConsumption,damage);
+            }
+        }
+
+        /*
+         * Suma todos los recursos
+         */ 
+        energy = energy + (e * diff);
+        graphene = graphene + (e * diff);
+        metal = metal + (e * diff);
+    }
+
+    function subResourceLevel(uint[9] level)
+        internal
+        pure
+        returns(uint[9] ret)
+    {
+        ret = level;
+        ret[ret[0]]--;
+    }
+
+
+    function getEnergyProduction(uint[9] panels, uint eConsumption, uint damage)
         internal
         pure
         returns(uint energy)
     {
         uint i;
         energy = 0;
-        for (i = 0; i < 6; i++) {
+        for (i = uint(ResourceIndex.PANEL_1); i <= uint(ResourceIndex.PANEL_6); i++) {
             energy = energy + (getProductionByLevel(panels[i]) * 2);
         }
         if (damage != 0) {
@@ -171,19 +254,21 @@ library GameLib {
         (aRemain,dRemain) = shipCombatCalcInternal(attacker[0],attacker[1],attacker[3],defender[0],defender[1],defender[2]);
     }
     
-    function getFleetEndProduction(uint size, uint hangarLevel, uint[6] ePanels, uint eConsumption, uint damage)
+    function getFleetEndProduction(uint size, uint hangarLevel, uint[9] rLevel, uint resourceEndUpgrade, uint eConsumption, uint damage)
         external
         view
         returns(bool,uint)
     {
+        uint _block = block.number;
         uint batches = (size/26) + 1;
         uint ret;
         ret = batches * (5-hangarLevel) * 80;
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
         }
-
-        return ((size <= getEnergyProduction(ePanels, eConsumption, damage)),(block.number + ret));
+        if (resourceEndUpgrade > _block)
+            return ((size <= getEnergyProduction(rLevel, eConsumption, damage)),(_block + ret));
+        return ((size <= getEnergyProduction(subResourceLevel(rLevel), eConsumption, damage)),(_block + ret));
     }
 
 
