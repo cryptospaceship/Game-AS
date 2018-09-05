@@ -1,6 +1,7 @@
 # Game-AS
 Game Arabian Shake Version
 
+Last version Library address: 0x6C328C5B056c1F6D95D2A4Ef279109d8708bF47a
 
 Compile Contract:
 
