@@ -179,8 +179,8 @@ library GameLib {
          * Suma todos los recursos
          */ 
         energy = energy + (e * diff);
-        graphene = graphene + (e * diff);
-        metal = metal + (e * diff);
+        graphene = graphene + (g * diff);
+        metal = metal + (m * diff);
     }
 
     function subResourceLevel(uint[9] level)
@@ -189,7 +189,8 @@ library GameLib {
         returns(uint[9] ret)
     {
         ret = level;
-        ret[ret[0]]--;
+        if (ret[0] != 0 )
+            ret[ret[0]]--;
     }
 
 
@@ -486,10 +487,14 @@ library GameLib {
             s = defenderPoints - attackerPoints;
             aRemain = 0;
             for (i = 0; i <= 4; i++) {
-                p = (dPoints[i] * dSize[i] * 100) / defenderPoints;
-                dRemain[i] = ((p * s) / 100) / dPoints[i];
-                if (dRemain[i] == 0)
-                    dRemain[i] = 1;
+                if (dSize[i] == 0 || dPoints[i] == 0) {
+                    dRemain[i] = 0;
+                } else {
+                    p = (dPoints[i] * dSize[i] * 100) / defenderPoints;
+                    dRemain[i] = ((p * s) / 100) / dPoints[i];
+                    if (dRemain[i] == 0)
+                        dRemain[i] = 1;
+                }
             }
         }
     }
@@ -673,6 +678,5 @@ library GameLib {
         uint8[11] memory production = [0,1,2,3,4,7,10,14,20,28,40];
         return production[level];
     }
-
     
 }

@@ -40,30 +40,6 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         uint endUpgrade;
     }
 
-    function getWarehouseLevel(uint _ship)
-        internal
-        view
-        returns(uint)
-    {
-        return getBuildingLevelByType(shipsInGame[_ship].buildings,0);
-    }
-
-    function getHangarLevel(uint _ship)
-        internal
-        view
-        returns(uint)
-    {
-        return getBuildingLevelByType(shipsInGame[_ship].buildings,1);
-    }
-
-    function getCannonLevel(uint _ship)
-        internal
-        view
-        returns(uint)
-    {
-        return getBuildingLevelByType(shipsInGame[_ship].buildings,2);
-    }
-
     struct Resources {
         /**
          * 0: Upgrading
@@ -798,14 +774,24 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             uint blocksToEndProduction
         )
     {
+        (fleetType, energyCost, grapheneCost, metalCost) = getFleetCost(_ship);
+        (attack, defense, distance, load) = getFleetConfig(_ship);
+        (size,inProduction,endProduction,blocksToEndProduction) = getFleetProduction(_ship);
+        
+    }
+
+    function getFleetProduction(uint _ship)
+        internal
+        view
+        returns
+        (
+            uint size,
+            uint inProduction,
+            uint endProduction,
+            uint blocksToEndProduction
+        )
+    {
         GameSpaceShip storage ship = shipsInGame[_ship];
-
-        attack = ship.fleet.fleetConfig.attack;
-        defense = ship.fleet.fleetConfig.defense;
-        distance = ship.fleet.fleetConfig.distance;
-        load = ship.fleet.fleetConfig.load;
-        (fleetType, energyCost, grapheneCost, metalCost) = GameLib.getFleetCost(attack,defense,distance,load); 
-
         endProduction = ship.fleet.fleetEndProduction;
         if (endProduction <= block.number) {
             size = ship.fleet.fleetSize + ship.fleet.fleetInProduction;
@@ -819,6 +805,38 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         }
     }
 
+    function getFleetConfig(uint _ship)
+        internal
+        view
+        returns
+        (
+            uint attack,
+            uint defense,
+            uint distance,
+            uint load
+        )
+    {
+        FleetConfig storage fleet = shipsInGame[_ship].fleet.fleetConfig;
+        attack = fleet.attack;
+        defense = fleet.defense;
+        distance = fleet.distance;
+        load = fleet.load;
+    }
+
+    function getFleetCost(uint _ship)
+        internal
+        view
+        returns
+        (
+            uint fleetType, 
+            uint energyCost, 
+            uint grapheneCost, 
+            uint metalCost
+        )
+    {
+        FleetConfig storage fleet = shipsInGame[_ship].fleet.fleetConfig;
+        (fleetType, energyCost, grapheneCost, metalCost) = GameLib.getFleetCost(fleet.attack,fleet.defense,fleet.distance,fleet.load); 
+    }
 
     function fireCannonInternal(uint _from,uint _to)
         internal
@@ -1501,6 +1519,8 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
 
     }
 
+
+
     function getBuildingLevel (Buildings storage building) 
         internal 
         view 
@@ -1526,6 +1546,30 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         }
     }
     
+    function getWarehouseLevel(uint _ship)
+        internal
+        view
+        returns(uint)
+    {
+        return getBuildingLevelByType(shipsInGame[_ship].buildings,0);
+    }
+
+    function getHangarLevel(uint _ship)
+        internal
+        view
+        returns(uint)
+    {
+        return getBuildingLevelByType(shipsInGame[_ship].buildings,1);
+    }
+
+    function getCannonLevel(uint _ship)
+        internal
+        view
+        returns(uint)
+    {
+        return getBuildingLevelByType(shipsInGame[_ship].buildings,2);
+    }
+
     function getResourceLevelByType( Resources storage resource, uint _type, uint _index)
         internal
         view
