@@ -61,10 +61,11 @@ library GameLib {
         if (inRange) {
             damage = getCannonDamage(level,distance);
             cost = getFireCannonCost();
-            lock = block.number + 300; // Esto no me gusta
+            lock = 300; // Esto no me gusta
             if (shipDamage > 0) {
                 lock = ((100 + shipDamage) * lock) / 100;
             }
+            lock = block.number + lock;
         }
     }
 
@@ -279,7 +280,7 @@ library GameLib {
         returns(bool,uint)
     {
         uint _block = block.number;
-        uint batches = (size/26) + 1;
+        uint batches = (size/46) + 1;
         uint ret;
         ret = batches * (5-hangarLevel) * 80;
         if (damage > 0) {

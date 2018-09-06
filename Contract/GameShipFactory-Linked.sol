@@ -701,7 +701,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             uint metalCollectorLevel
         )
     {
-        (energy,graphene,metal) = getProductionPerBlock(_ship);
+        (energy,graphene,metal) = getProductionPerBlock(_ship,true);
         (energyLevel,grapheneCollectorLevel,metalCollectorLevel) = getResourceLevel(shipsInGame[_ship].resources);
     }
 
@@ -878,7 +878,11 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         else {
             collectResourcesAndSub(_to, 0,0,0);
             to.damage = to.damage + damage;
-            (energy,,) = getProductionPerBlock(_to);
+            /*
+             * Luego de disparado el cañon, hay que revisar que 
+             * si se puede soportar una flota del tamaño
+             */
+            (energy,,) = getProductionPerBlock(_to,false);
             cons = getFleetConsumption(_to);
             if (energy < cons) {
                 killFleet(_to,cons-energy);
@@ -1284,7 +1288,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         }
     }
 
-    function getProductionPerBlock(uint _ship)
+    function getProductionPerBlock(uint _ship, bool withFleet)
         internal
         view
         returns(uint energy, uint graphene, uint metal)
@@ -1297,13 +1301,24 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             metal = 0;
         }
         else {
-            (energy,graphene,metal) = GameLib.getProduction(
-                ship.resources.level,
-                ship.resources.endUpgrade,
-                ship.resourceDensity, 
-                getFleetConsumption(_ship),
-                ship.damage
-            );
+            if (withFleet) {
+                (energy,graphene,metal) = GameLib.getProduction(
+                    ship.resources.level,
+                    ship.resources.endUpgrade,
+                    ship.resourceDensity, 
+                    getFleetConsumption(_ship),
+                    ship.damage
+                );
+            } else {
+                (energy,graphene,metal) = GameLib.getProduction(
+                    ship.resources.level,
+                    ship.resources.endUpgrade,
+                    ship.resourceDensity, 
+                    0,
+                    ship.damage
+                );
+            }
+
         }
     }
 
