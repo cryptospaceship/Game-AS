@@ -85,8 +85,8 @@ library GameLib {
         returns(uint energy, uint graphene, uint metal)
     {
         uint s;
-        graphene = getProductionByLevel(rLevel[uint(ResourceIndex.GRAPHENE)]) * density[1];
-        metal = getProductionByLevel(rLevel[uint(ResourceIndex.METAL)]) * density[2];
+        graphene = getProductionByLevel(rLevel[7]) * density[1];
+        metal = getProductionByLevel(rLevel[8]) * density[2];
 
         if (damage != 0) {
             s = 100 - damage;
@@ -171,7 +171,7 @@ library GameLib {
                  * La ultima cosecha fue posterior a la cuando finalizo la construccion
                  */
                 diff = b - lastHarvest;
-                (energy,graphene,metal) = getProductionInternal(rLevel,density,eConsumption,damage);
+                (e,g,m) = getProductionInternal(rLevel,density,eConsumption,damage);
             }
         }
 
@@ -201,7 +201,7 @@ library GameLib {
     {
         uint i;
         energy = 0;
-        for (i = uint(ResourceIndex.PANEL_1); i <= uint(ResourceIndex.PANEL_6); i++) {
+        for (i = 1; i <= 6; i++) {
             energy = energy + (getProductionByLevel(panels[i]) * 2);
         }
         if (damage != 0) {
@@ -283,11 +283,11 @@ library GameLib {
             uint m
         ) 
     {
-        uint points = _attack + _defense + (_distance * 7) + (_load/40);
+        uint points = _attack + _defense + (_distance * 6) + (_load/80);
         if ( points <= 100 && points != 0) {
-            e = (20*_attack) + (20 * _defense) + (20*(_distance*7)) + (20*(_load/40));
-            g = (70*_defense) + (70*(_distance*7)) + (50*_attack) + (30*(_load/40));
-            m = (70*_attack) + (70*(_load/40)) + (50*_defense) + (30*(_distance*7));
+            e = (20*_attack) + (20 * _defense) + (20*(_distance*6)) + (20*(_load/80));
+            g = (70*_defense) + (70*(_distance*6)) + (50*_attack) + (30*(_load/80));
+            m = (70*_attack) + (70*(_load/80)) + (50*_defense) + (30*(_distance*6));
             fleetType = getFleetType(_attack,_defense,_distance,_load);
         }
         else {
@@ -299,7 +299,7 @@ library GameLib {
     }
 
     function lockChangeMode(uint damage) 
-        external 
+        external
         view 
         returns(uint)
     {
@@ -325,7 +325,7 @@ library GameLib {
         view 
         returns(uint energy, uint graphene, uint metal, uint lock)
     {
-        uint24[5] memory buildingCost = [0,5292,23338,102910,453874];
+        uint24[5] memory buildingCost = [0,5292,26168,120965,559164];
         if (_type == 2) {
             energy = buildingCost[_level]*3;
             graphene = buildingCost[_level]*3;
@@ -343,7 +343,7 @@ library GameLib {
         view
         returns(uint energy, uint graphene, uint metal, uint lock)
     {
-        uint24[11] memory resourceCost = [0,1200,2520,5292,11113,23338,49009,102919,216131,453874,953136];
+        uint24[11] memory resourceCost = [0,1200,2520,5292,12171,26168,56263,120965,260076,559164,1202204];
         if (_type == 0) {
             energy = resourceCost[_level];
             graphene = resourceCost[_level]*2;
@@ -411,8 +411,8 @@ library GameLib {
         pure
         returns(uint fleetType)
     {
-        uint _d = _distance * 7;
-        uint _l = _load/40;
+        uint _d = _distance * 6;
+        uint _l = _load/80;
         if ( _attack > _defense && _attack > _d && _attack > _l ) {
             fleetType = 1;
         }
@@ -617,7 +617,7 @@ library GameLib {
         returns(uint)
     {
         uint ret;
-        ret = level * 200;
+        ret = level * 160;
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
         }
