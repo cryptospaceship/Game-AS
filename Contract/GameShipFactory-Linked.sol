@@ -588,8 +588,9 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         uint level = getBuildingLevelByType(shipsInGame[_ship].buildings, _type) + 1;
         require(level <= 4);
         (energy,graphene,metal,end) = GameLib.getUpgradeBuildingCost(_type,level,shipsInGame[_ship].damage);
+
+        collectResourcesAndSub(_ship,energy,graphene,metal);
         shipsInGame[_ship].buildings.endUpgrade = end;
-        expend(_ship,energy,graphene,metal);
         addBuildingLevel(shipsInGame[_ship].buildings,_type);
     }
 
@@ -606,8 +607,8 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         require(level <= 10);
         (energy,graphene,metal,end) = GameLib.getUpgradeResourceCost(_type,level,s.damage);
 
-        s.resources.endUpgrade = end;
         collectResourcesAndSub(_ship,energy,graphene,metal);
+        s.resources.endUpgrade = end;
         addResourceLevel(s.resources,_type,_index);
     }
 
