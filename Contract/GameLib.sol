@@ -69,36 +69,8 @@ library GameLib {
     }
 
     /**
-     * @dev getProductionInternal(): Calcula la produccion total de la nave
-     * @param rLevel Array de 8 posiciones, con el nivel de cada panel 6 primera posiciones y las 
-     * otras dos para el colector de grafeno y para el colector de metales
-     * @param density Array de dos posisciones con la densidad de Graphene y Metal
-     * @param eConsumption consumo de la nave
-     * @param damage Daño de la nave principal (Afecta la produccion)
-     * @return energy: Produccion total de energia
-     * @return graphene: Produccion total de graphene
-     * @return metal: Produccion total de metales
-     */
-    function getProductionInternal(uint[9] rLevel, uint[3] density, uint eConsumption, uint damage)
-        internal
-        pure
-        returns(uint energy, uint graphene, uint metal)
-    {
-        uint s;
-        graphene = getProductionByLevel(rLevel[7]) * density[1];
-        metal = getProductionByLevel(rLevel[8]) * density[2];
-
-        if (damage != 0) {
-            s = 100 - damage;
-            graphene = s * graphene / 100;
-            metal = s * metal / 100;
-        }
-        energy = getEnergyProduction(rLevel, eConsumption,damage);
-    }
-
-    /**
      * @dev getProduction(): Calcula la produccion total de la nave
-     * @param rLevel Array de 8 posiciones, con el nivel de cada panel 6 primera posiciones y las 
+     * @param rLevel Array de 9 posiciones, con el nivel de cada panel 6 primera posiciones y las 
      * otras dos para el colector de grafeno y para el colector de metales
      * @param density Array de dos posisciones con la densidad de Graphene y Metal
      * @param eConsumption consumo de la nave
@@ -118,6 +90,24 @@ library GameLib {
             (energy,graphene,metal) = getProductionInternal(rLevel,density,eConsumption,damage);        
     }
 
+    /**
+     * @dev getUnharvestResources(): Trae los recursos no cosechados
+     * @param rLevel Array de 9 posiciones.
+     *               0: Recurso que se esta ampliando
+     *               1: Panel energia 1
+     *               2: Panel energia 2
+     *               3: Panel energia 3
+     *               4: Panel energia 4
+     *               5: Panel energia 5
+     *               6: Panel energia 6
+     *               7: Colector de Grapheno
+     *               8: Colector de Metales
+     * @param endUpgrade Numero de bloque en que la actualizacion de recursos va a finalizar
+     * @param density Array de 3 posiciones con la densidad de recursos
+     * @param eConsumption Consumo de enegia
+     * @param damage Daño de la nave
+     * @param lastHarvest Ultima vez que se "cosecho"
+     */
     function getUnharvestResources(uint[9] rLevel, uint endUpgrade, uint[3] density, uint eConsumption, uint damage, uint lastHarvest)
         external
         view
@@ -181,6 +171,34 @@ library GameLib {
         energy = energy + (e * diff);
         graphene = graphene + (g * diff);
         metal = metal + (m * diff);
+    }
+
+    /**
+     * @dev getProductionInternal(): Calcula la produccion total de la nave
+     * @param rLevel Array de 8 posiciones, con el nivel de cada panel 6 primera posiciones y las 
+     * otras dos para el colector de grafeno y para el colector de metales
+     * @param density Array de dos posisciones con la densidad de Graphene y Metal
+     * @param eConsumption consumo de la nave
+     * @param damage Daño de la nave principal (Afecta la produccion)
+     * @return energy: Produccion total de energia
+     * @return graphene: Produccion total de graphene
+     * @return metal: Produccion total de metales
+     */
+    function getProductionInternal(uint[9] rLevel, uint[3] density, uint eConsumption, uint damage)
+        internal
+        pure
+        returns(uint energy, uint graphene, uint metal)
+    {
+        uint s;
+        graphene = getProductionByLevel(rLevel[7]) * density[1];
+        metal = getProductionByLevel(rLevel[8]) * density[2];
+
+        if (damage != 0) {
+            s = 100 - damage;
+            graphene = s * graphene / 100;
+            metal = s * metal / 100;
+        }
+        energy = getEnergyProduction(rLevel, eConsumption,damage);
     }
 
     function subResourceLevel(uint[9] level)
