@@ -280,7 +280,7 @@ library GameLib {
         returns(bool,uint)
     {
         uint _block = block.number;
-        uint batches = (size/46) + 1;
+        uint batches = (size/48) + 1;
         uint ret;
         ret = batches * (5-hangarLevel) * 80;
         if (damage > 0) {
