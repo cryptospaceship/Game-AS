@@ -946,6 +946,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
              */
             if (spacialPort.owner != shipsInGame[_from].owner) {
                 candidate = shipsInGame[_from].owner;
+                spacialPort.owner = candidate;
                 endBlock = block.number + GameLib.getBlocksToWin();
             }
 
