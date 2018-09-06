@@ -712,27 +712,32 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             uint energyStock,
             uint grapheneStock,
             uint metalStock,
-            // Agregar Nivel de Warehouse
-            uint countdownToUpgradeResources,
-            uint countdownToUpgradeBuildings,
+            uint endUpgradeResource,
+            uint endUpgradeBuilding,
             uint countdownToMove,
             uint countdownToFleet,
             uint countdownToMode,
-            uint countdownToFireCannon
+            uint countdownToFireCannon,
+            uint resourceUpgrading,
+            uint buildingUpgrading
         )
     {
         uint b = block.number;
         GameSpaceShip storage ship = shipsInGame[_ship];
         (energyStock,grapheneStock,metalStock) = getResources(_ship);
+
+        resourceUpgrading = ship.resources.level[0];
+        buildingUpgrading = ship.buildings.level[0];        
+
         if (b > ship.resources.endUpgrade) 
-            countdownToUpgradeResources = 0;
+            endUpgradeResource = 0;
         else
-            countdownToUpgradeResources = ship.resources.endUpgrade - b;
+            endUpgradeResource = ship.resources.endUpgrade - b;
 
         if (b > ship.buildings.endUpgrade) 
-            countdownToUpgradeBuildings = 0;
+            endUpgradeBuilding = 0;
         else
-            countdownToUpgradeBuildings = ship.buildings.endUpgrade - b;
+            endUpgradeBuilding = ship.buildings.endUpgrade - b;
 
         if (b > ship.lock.move) 
             countdownToMove = 0;
