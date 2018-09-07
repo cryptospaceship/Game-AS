@@ -552,6 +552,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             unsetShipInDefense(_ship);
             ship.isPortDefender = false;
         } else {
+            
             (inRange,lock) = GameLib.checkRange(getPortDistance(_ship),ship.mode, ship.damage);
             require(inRange);
 
