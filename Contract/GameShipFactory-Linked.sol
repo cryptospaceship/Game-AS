@@ -521,8 +521,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
                 unsetShipInDefense(_ship);
                 ship.isPortDefender = false;
             }
-        }                
-        else {
+        } else {
             unsetInMapPosition(ship.x,ship.y);
         }
         setInMapPosition(_ship,x,y);
@@ -551,8 +550,8 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         if (ship.isPortDefender && defense == false) {
             unsetShipInDefense(_ship);
             ship.isPortDefender = false;
+
         } else {
-            
             (inRange,lock) = GameLib.checkRange(getPortDistance(_ship),ship.mode, ship.damage);
             require(inRange);
 
