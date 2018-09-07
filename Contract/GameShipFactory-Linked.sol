@@ -548,22 +548,27 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         uint lock;
         require(isValidPort(getMapPosition(x,y))); 
         
-        (inRange,lock) = GameLib.checkRange(getPortDistance(_ship),ship.mode, ship.damage);
-        require(inRange);
+        if (ship.isPortDefender && defense == false) {
+            unsetShipInDefense(_ship);
+            ship.isPortDefender = false;
+        } else {
+            (inRange,lock) = GameLib.checkRange(getPortDistance(_ship),ship.mode, ship.damage);
+            require(inRange);
 
-        ship.lock.move = lock;
-        collectResourcesAndSub(_ship,0,0,0);
-        unsetInMapPosition(ship.x,ship.y);
-        ship.inPort = true;
-        if (defense == true) {
-            require(getFleetSize(_ship) > 0);
-            setShipInDefense(_ship);
-            ship.isPortDefender = true;
+            ship.lock.move = lock;
+            collectResourcesAndSub(_ship,0,0,0);
+            unsetInMapPosition(ship.x,ship.y);
+            ship.inPort = true;
+            if (defense == true) {
+                require(getFleetSize(_ship) > 0);
+                setShipInDefense(_ship);
+                ship.isPortDefender = true;
+            }
+            ship.x = x;
+            ship.y = y;
+            ship.resourceDensity[1] = 0;
+            ship.resourceDensity[2] = 0;
         }
-        ship.x = x;
-        ship.y = y;
-        ship.resourceDensity[1] = 0;
-        ship.resourceDensity[2] = 0;
     }
 
     function changeMode(uint _ship, uint _mode) 
@@ -1217,25 +1222,6 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
                 a.fleetSize -= left;
             }
         }
-    }
-
-    function inWarehouse(uint _ship, uint e, uint g, uint m)
-        internal
-        view
-        returns(bool)
-    {
-        GameSpaceShip storage s = shipsInGame[_ship];
-        return (s.warehouse.energy >= e && s.warehouse.graphene >= g && s.warehouse.metal >= m);
-    }
-
-    function warehouseFull(uint _ship)
-        internal
-        view
-        returns(bool)
-    {
-        GameSpaceShip storage s = shipsInGame[_ship];
-        uint maxStorage = getWarehouseLoad(_ship);
-        return (s.warehouse.energy == maxStorage || s.warehouse.graphene == maxStorage || s.warehouse.metal == maxStorage);
     }
 
     function getResources(uint _ship)
