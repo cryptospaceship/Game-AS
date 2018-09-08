@@ -669,14 +669,14 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             uint x,
             uint y,
             uint mode,
-            uint damage
+            bool inPort
         )
     {
         shipName = shipsInGame[_ship].shipName;
         x = shipsInGame[_ship].x;
         y = shipsInGame[_ship].y;
         mode = shipsInGame[_ship].mode;
-        damage = shipsInGame[_ship].damage;
+        inPort = shipsInGame[_ship].inPort;
     }
 
     function viewBuildingLevel(uint _ship)
@@ -686,10 +686,12 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         (
             uint warehouse,
             uint hangar,
-            uint cannon
+            uint cannon,
+            uint buildingUpgrading
         )
     {
         (warehouse,hangar,cannon) = getBuildingLevel(shipsInGame[_ship].buildings);
+        buildingUpgrading = shipsInGame[_ship].buildings.level[0];
     }
 
 
@@ -703,11 +705,13 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             uint metal,
             uint[6] memory energyLevel,
             uint grapheneCollectorLevel,
-            uint metalCollectorLevel
+            uint metalCollectorLevel,
+            uint resourceUpgrading
         )
     {
         (energy,graphene,metal) = getProductionPerBlock(_ship,true);
         (energyLevel,grapheneCollectorLevel,metalCollectorLevel) = getResourceLevel(shipsInGame[_ship].resources);
+        resourceUpgrading = shipsInGame[_ship].resources.level[0];
     }
 
     function viewShipVars(uint _ship)
@@ -724,16 +728,14 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             uint countdownToFleet,
             uint countdownToMode,
             uint countdownToFireCannon,
-            uint resourceUpgrading,
-            uint buildingUpgrading
+            uint damage
         )
     {
         uint b = block.number;
         GameSpaceShip storage ship = shipsInGame[_ship];
         (energyStock,grapheneStock,metalStock) = getResources(_ship);
-
-        resourceUpgrading = ship.resources.level[0];
-        buildingUpgrading = ship.buildings.level[0];        
+ 
+        damage = ship.damage;     
 
         if (b > ship.resources.endUpgrade) 
             endUpgradeResource = 0;
