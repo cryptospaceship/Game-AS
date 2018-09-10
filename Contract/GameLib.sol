@@ -35,7 +35,7 @@ library GameLib {
         view
         returns(bool inRange, uint lock)
     {
-        inRange = (distance <= getMovemmentByMode(mode));
+        inRange = (distance <= getMovemmentByMode(mode) && distance != 0);
         if (inRange) 
             lock = lockMovemment(distance,mode,damage);
         else
