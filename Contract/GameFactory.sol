@@ -116,7 +116,7 @@ contract GameFactory is Mortal {
         gameReady = false;
 
         emit WinnerEvent(
-            candidate,
+            winner,
             address(this).balance
         );
         candidate.transfer(address(this).balance);

@@ -363,6 +363,10 @@ library GameLib {
         returns(uint energy, uint graphene, uint metal, uint lock)
     {
         uint24[11] memory resourceCost = [0,1200,2520,5292,12171,26168,56263,120965,260076,559164,1202204];
+        /*
+            2584738 Level 11
+            5557187 Level 12
+        */
         if (_type == 0) {
             energy = resourceCost[_level];
             graphene = resourceCost[_level]*2;
@@ -694,7 +698,11 @@ library GameLib {
         pure
         returns(uint) 
     {
-        uint8[11] memory production = [0,1,2,3,4,7,10,14,20,28,40];
+        uint8[11] memory production = [0,1,2,3,4,7,10,14,20,28,40]; // ...60,95,140
+        /*
+            56 Level 11
+            80 Level 12
+        */
         return production[level];
     }
     
