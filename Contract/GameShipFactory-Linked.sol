@@ -466,11 +466,9 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         onlyWithHangar(_ship)
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
-        uint fleetType;
 
         require(canDesignFleet(_ship));
-        (fleetType,,,) = GameLib.getFleetCost(_attack,_defense,_distance,_load); 
-        require(fleetType != 0);
+        require(GameLib.validFleetDesign(_attack,_defense,_distance,_load,100));
 
         ship.fleet.fleetConfig.attack = _attack;
         ship.fleet.fleetConfig.defense = _defense;
@@ -489,7 +487,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         uint g;
         uint m;
         FleetConfig storage fleet = shipsInGame[_ship].fleet.fleetConfig;
-        (,e,g,m) = GameLib.getFleetCost(fleet.attack,fleet.defense,fleet.distance,fleet.load);   
+        (,e,g,m) = GameLib.getFleetCost(fleet.attack,fleet.defense,fleet.distance,fleet.load,100);   
         expend(_ship,e*size,g*size,m*size);
         addFleetToProduction(_ship,size);
     }
@@ -848,7 +846,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         )
     {
         FleetConfig storage fleet = shipsInGame[_ship].fleet.fleetConfig;
-        (fleetType, energyCost, grapheneCost, metalCost) = GameLib.getFleetCost(fleet.attack,fleet.defense,fleet.distance,fleet.load); 
+        (fleetType, energyCost, grapheneCost, metalCost) = GameLib.getFleetCost(fleet.attack,fleet.defense,fleet.distance,fleet.load,100); 
     }
 
     function fireCannonInternal(uint _from,uint _to)
@@ -1192,10 +1190,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         bool build;
         uint end;
 
-        if (a.fleetInProduction > 0)
-            a.fleetSize = a.fleetSize + a.fleetInProduction;
-
-        
+                
         (build, end) = GameLib.getFleetEndProduction(
             size,
             getHangarLevel(_ship),
@@ -1205,6 +1200,9 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             shipsInGame[_ship].damage
         );
         require(build);
+        if (a.fleetInProduction > 0)
+            a.fleetSize = a.fleetSize + a.fleetInProduction;
+
         a.fleetInProduction = size;
         a.fleetEndProduction = end;
     }
@@ -1214,15 +1212,20 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
     {
         Fleet storage a = shipsInGame[_ship].fleet;
         uint left;
+        uint _block = block.number;
         uint prod = a.fleetInProduction;
-        if (prod > 0) {
+        if (prod > 0 ) {
             if (prod > size) 
                 a.fleetInProduction -= size;
             else {
                 left = size - prod;
                 a.fleetInProduction = 0;
+                if (a.fleetEndProduction > _block)
+                    a.fleetEndProduction = _block;
                 a.fleetSize -= left;
             }
+        } else {
+            a.fleetSize -= size;
         }
     }
 

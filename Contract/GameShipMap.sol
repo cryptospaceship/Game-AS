@@ -4,8 +4,8 @@ import "./Ownable.sol";
 
 contract GameShipMap is Ownable {
     uint[64][64]    gameMap;
-    uint            public size = 4096;
-    uint            public sideSize = 64;
+    uint            size = 4096;
+    uint            sideSize = 64;
     
     modifier validPosition(uint x,uint y) {
         require(x < sideSize && y < sideSize);
@@ -60,7 +60,7 @@ contract GameShipMap is Ownable {
             x = _x - 3;
         } else {
             if ( _x + 3 > sideSize )
-                x = sideSize - 6;
+                x = sideSize - 7;
             else
                 x = 0;                
         }
@@ -69,7 +69,7 @@ contract GameShipMap is Ownable {
             y = _y - 3;
         } else {
             if ( _y + 3 > sideSize )
-                y = sideSize - 6;
+                y = sideSize - 7;
             else
                 y = 0;
         }

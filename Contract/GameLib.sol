@@ -287,12 +287,22 @@ library GameLib {
             ret = ((100 + damage) * ret) / 100;
         }
         if (resourceEndUpgrade > _block)
-            return ((size <= getEnergyProduction(rLevel, eConsumption, damage)),(_block + ret));
-        return ((size <= getEnergyProduction(subResourceLevel(rLevel), eConsumption, damage)),(_block + ret));
+            return ((size <= getEnergyProduction(subResourceLevel(rLevel), eConsumption, damage)),(_block + ret));
+        return ((size <= getEnergyProduction(rLevel, eConsumption, damage)),(_block + ret));
     }
 
 
-    function getFleetCost(uint _attack, uint _defense, uint _distance, uint _load)
+    function validFleetDesign(uint _attack, uint _defense, uint _distance, uint _load, uint points)
+        external
+        pure
+        returns(bool)
+    {
+        uint p = _attack + _defense + (_distance * 6) + (_load/80);
+        return ( p <= points && p != 0);
+    }
+
+
+    function getFleetCost(uint _attack, uint _defense, uint _distance, uint _load, uint _points)
         external
         pure
         returns(
@@ -303,7 +313,7 @@ library GameLib {
         ) 
     {
         uint points = _attack + _defense + (_distance * 6) + (_load/80);
-        if ( points <= 100 && points != 0) {
+        if ( points <= _points && points != 0) {
             e = (20*_attack) + (20 * _defense) + (20*(_distance*6)) + (20*(_load/80));
             g = (70*_defense) + (70*(_distance*6)) + (50*_attack) + (30*(_load/80));
             m = (70*_attack) + (70*(_load/80)) + (50*_defense) + (30*(_distance*6));
