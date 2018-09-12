@@ -355,6 +355,13 @@ library GameLib {
         returns(uint energy, uint graphene, uint metal, uint lock)
     {
         uint24[5] memory buildingCost = [0,5292,26168,120965,559164];
+        /*
+            Nuevos Costos Propuestos
+            6933   Level 1
+            32051  Level 2
+            148156 Level 3
+            684855 Level 4 
+        */
         if (_type == 2) {
             energy = buildingCost[_level]*3;
             graphene = buildingCost[_level]*3;
@@ -376,6 +383,20 @@ library GameLib {
         /*
             2584738 Level 11
             5557187 Level 12
+            ----------------
+            Nuevos Costos Propuestos
+            1500    Level 1
+            3225    Level 2
+            6933    Level 3 
+            14907   Level 4
+            32051   Level 5
+            68910   Level 6
+            148156  Level 7    
+            318537  Level 8
+            684855  Level 9
+            1472439 Level 10
+            3165744 Level 11 <- Nuevos Niveles - Solo Energia 
+            6806350 Level 12 <- Nuevos Niveles - Solo Energia
         */
         if (_type == 0) {
             energy = resourceCost[_level];
@@ -708,12 +729,11 @@ library GameLib {
         pure
         returns(uint) 
     {
-        uint8[11] memory production = [0,1,2,3,4,7,10,14,20,28,40]; // ...60,95,140
+        uint8[11] memory production = [0,1,2,3,4,7,10,14,20,28,40]; // ...56,80 = 80*12 = 
         /*
             56 Level 11
             80 Level 12
         */
         return production[level];
-    }
-    
+    }   
 }
