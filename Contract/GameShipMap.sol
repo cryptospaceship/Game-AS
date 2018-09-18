@@ -133,6 +133,14 @@ contract GameShipMap is Ownable {
         return (x,y);
     }
 	
+    function changeMapSize(uint s)
+        internal
+    {
+        size = s * s;
+        sideSize = s;
+    }
+
+
     function getMapPosition(uint x, uint y)
         internal
         view

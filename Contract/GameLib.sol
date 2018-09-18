@@ -506,7 +506,6 @@ library GameLib {
         return 2000000;
     }
 
-
     function portCombarCalcInternal(uint aPoints, uint aSize, uint[5] dPoints, uint[5] dSize)
         internal
         pure

@@ -6,7 +6,7 @@ import "./GameFactory.sol";
 import "./UtilsLib.sol";
 
 
-contract GameShipFactory_linked is GameFactory, GameSpacialPort {
+contract GameShipFactory_linked is GameFactory {
 
     struct FleetConfig {
         uint attack;
