@@ -176,8 +176,8 @@ contract GameShipFactory_linked is GameFactory {
         /**
          * Place Ship in Map
          */
-        gss.x = uint(keccak256(gss.shipName,block.number)) % 64;
-        gss.y = uint(keccak256(block.number,gss.shipName)) % 64;
+        gss.x = uint(keccak256(gss.shipName,block.number)) % sideSize;
+        gss.y = uint(keccak256(block.number,gss.shipName)) % sideSize;
         setInMapPosition(_ship,gss.x,gss.y);
         (gss.resourceDensity[0],gss.resourceDensity[1],gss.resourceDensity[2]) = getResourceDensity(gss.x,gss.y);
         
