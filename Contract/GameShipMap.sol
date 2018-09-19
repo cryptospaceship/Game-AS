@@ -59,7 +59,7 @@ contract GameShipMap is Ownable {
         if ( _x + 3 < sideSize && _x > 3 ) {
             x = _x - 3;
         } else {
-            if ( _x + 3 > sideSize )
+            if ( _x + 3 >= sideSize )
                 x = sideSize - 7;
             else
                 x = 0;                
@@ -68,7 +68,7 @@ contract GameShipMap is Ownable {
         if ( _y + 3 < sideSize && _y > 3 ) {
             y = _y - 3;
         } else {
-            if ( _y + 3 > sideSize )
+            if ( _y + 3 >= sideSize )
                 y = sideSize - 7;
             else
                 y = 0;
