@@ -660,7 +660,7 @@ library GameLib {
         returns (uint,uint)
     {
         if (_mode == 2) return(50,0);
-        else if(_mode == 3) return(0,100);
+        else if(_mode == 3) return(0,50);
         else return(0,0);
     }
 
