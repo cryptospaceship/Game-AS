@@ -6,36 +6,25 @@ import "./GameFactory.sol";
 import "./UtilsLib.sol";
 
 
-contract GameShipFactory_linked is GameFactory, GameSpacialPort {
+contract GameShipFactory_linked is GameFactory {
 
-    struct FleetDesign {
-        uint fleetType;
+    struct FleetConfig {
         uint attack;
         uint defense;
         uint distance;
         uint load;
     }
     
-    struct FleetCost {
-        uint energy;
-        uint graphene;
-        uint metal;
-    }
-    
     struct Fleet {
-        FleetDesign fleetDesign;
-        FleetCost fleetCost;
+        FleetConfig fleetConfig;
         uint fleetSize;
         uint fleetInProduction;
         uint fleetEndProduction;
-        bool fleetDesigned;
     }
 
     struct Lock {
         uint move;
         uint mode;
-        uint resource;
-        uint building;
         uint fleet;
         uint fireCannon;
     }
@@ -47,15 +36,19 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
     }
 
     struct Buildings {
-        uint warehouseLevel;
-        uint hangarLevel;
-        uint cannonLevel;
+        uint[4] level;
+        uint endUpgrade;
     }
 
     struct Resources {
-        uint[12] energyPanelLevel;
-        uint grapheneCollectorLevel;
-        uint metalCollectorLevel;
+        /**
+         * 0: Upgrading
+         * 1 - 6: Energy
+         * 7: Graphene
+         * 8: Metal
+         */
+        uint[9] level;
+        uint endUpgrade;    
     }
 
     struct GameSpaceShip {
@@ -174,8 +167,8 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         gss.lastHarvest = gameLaunch;
         gss.lock.move = gameLaunch;
         gss.lock.mode = gameLaunch;
-        gss.lock.resource = gameLaunch;
-        gss.lock.building = gameLaunch;
+        gss.resources.endUpgrade = gameLaunch;
+        gss.buildings.endUpgrade = gameLaunch;
         gss.lock.fleet = gameLaunch;
         gss.lock.fireCannon = gameLaunch;
         isShipInGame[_ship] = true;
@@ -183,8 +176,8 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         /**
          * Place Ship in Map
          */
-        gss.x = uint(keccak256(gss.shipName,block.number)) % 64;
-        gss.y = uint(keccak256(block.number,gss.shipName)) % 64;
+        gss.x = uint(keccak256(gss.shipName,block.number)) % sideSize;
+        gss.y = uint(keccak256(block.number,gss.shipName)) % sideSize;
         setInMapPosition(_ship,gss.x,gss.y);
         (gss.resourceDensity[0],gss.resourceDensity[1],gss.resourceDensity[2]) = getResourceDensity(gss.x,gss.y);
         
@@ -197,7 +190,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
     /*
      * Esta funcion es solamente durante la etapa de desarrollo
      */
-    function adminSetShipVars(uint _ship, uint x, uint y, uint[12] pLevel, uint[2] rLevel, uint[3] bLevel, uint[3] stock)
+    function adminSetShipVars(uint _ship, uint x, uint y, uint[9] rLevel, uint[4] bLevel, uint[3] stock)
         external
         onlyOwnerOrAdmin
     {
@@ -211,12 +204,9 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         setInMapPosition(_ship,x,y);
         ship.x = x;
         ship.y = y;
-        ship.resources.energyPanelLevel = pLevel;
-        ship.resources.grapheneCollectorLevel = rLevel[0];
-        ship.resources.metalCollectorLevel = rLevel[1];
-        ship.buildings.warehouseLevel = bLevel[0];
-        ship.buildings.hangarLevel = bLevel[1];
-        ship.buildings.cannonLevel = bLevel[2];
+        (ship.resourceDensity[0],ship.resourceDensity[1],ship.resourceDensity[2]) = getResourceDensity(x,y);
+        ship.resources.level = rLevel;
+        ship.buildings.level = bLevel;
         ship.warehouse.energy = stock[0];
         ship.warehouse.graphene = stock[1];
         ship.warehouse.metal = stock[2];
@@ -245,18 +235,18 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
      *
      *------------------------------------------------------------------------------
      */
-    modifier upgradeResourceUnlocked(uint _ship) {
-        uint lock_resource = shipsInGame[_ship].lock.resource;
+    modifier upgradeResourceFinish(uint _ship) {
+        uint end = shipsInGame[_ship].resources.endUpgrade;
         require(
-            lock_resource <= block.number
+            end <= block.number
         );
         _;
     }
 
-    modifier upgradeBuildingUnlocked(uint _ship) {
-        uint lock_building = shipsInGame[_ship].lock.building;
+    modifier upgradeBuildingFinish(uint _ship) {
+        uint end = shipsInGame[_ship].buildings.endUpgrade;
         require( 
-            lock_building <= block.number
+            end <= block.number
         );
         _;
     }
@@ -302,7 +292,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
     }
 
     modifier onlyWithCannon(uint _ship) {
-        uint cannonLevel = shipsInGame[_ship].buildings.cannonLevel;
+        uint cannonLevel = getCannonLevel(_ship);
         require(
             cannonLevel >= 1
         );
@@ -318,7 +308,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
     }
 
     modifier onlyWithHangar(uint _ship) {
-        uint hangarLevel = shipsInGame[_ship].buildings.hangarLevel;
+        uint hangarLevel = getHangarLevel(_ship);
         require(
             hangarLevel >= 1
         );
@@ -342,7 +332,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
     
     modifier validResourceType(uint _type, uint _index) {
         require(
-            _type <= 2 && _index <= 11
+            _type <= 2 && _index <= 5
         );
         _;
     }
@@ -425,7 +415,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         external
         isGameStart
         onlyShipOwner(_ship)
-        upgradeBuildingUnlocked(_ship)
+        upgradeBuildingFinish(_ship)
         validBuildingType(_type)
     {
         upgradeBuildingInternal(_ship,_type);
@@ -435,7 +425,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         external
         isGameStart
         onlyShipOwner(_ship)
-        upgradeResourceUnlocked(_ship)
+        upgradeResourceFinish(_ship)
         validResourceType(_type,_index)
     {
         upgradeResourceInternal(_ship,_type,_index);
@@ -464,7 +454,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
 
         expend(_from,energy,graphene,metal);
         from.lock.fleet = lock;
-        _addWarehouse(to.warehouse, energy, graphene, metal, to.buildings.warehouseLevel);
+        _addWarehouse(to.warehouse, energy, graphene, metal, getWarehouseLevel(_to));
 
         emit SentResourcesEvent(_from,_to,energy,graphene,metal);
     }
@@ -476,24 +466,14 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         onlyWithHangar(_ship)
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
-        uint e;
-        uint g;
-        uint m;
-        uint fleetType;
 
         require(canDesignFleet(_ship));
-        (fleetType,e,g,m) = GameLib.getFleetCost(_attack,_defense,_distance,_load); 
-        require(fleetType != 0);
-        ship.fleet.fleetDesigned = true;
-        
-        ship.fleet.fleetCost.energy = e;
-        ship.fleet.fleetCost.graphene = g;
-        ship.fleet.fleetCost.metal = m;
-        ship.fleet.fleetDesign.fleetType = fleetType;
-        ship.fleet.fleetDesign.attack = _attack;
-        ship.fleet.fleetDesign.defense = _defense;
-        ship.fleet.fleetDesign.distance = _distance;
-        ship.fleet.fleetDesign.load = _load;
+        require(GameLib.validFleetDesign(_attack,_defense,_distance,_load,100));
+
+        ship.fleet.fleetConfig.attack = _attack;
+        ship.fleet.fleetConfig.defense = _defense;
+        ship.fleet.fleetConfig.distance = _distance;
+        ship.fleet.fleetConfig.load = _load;
     }
 
     function buildFleet(uint _ship, uint size)
@@ -503,12 +483,12 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         onlyWithHangar(_ship)
         onlyIfCanBuildFleet(_ship)
     {
-        FleetCost storage ac = shipsInGame[_ship].fleet.fleetCost;    
-        uint energyProduction;
-
-        (energyProduction,,) = getProductionPerBlock(_ship);
-        require(size <= energyProduction);
-        expend(_ship,ac.energy*size,ac.graphene*size,ac.metal*size);
+        uint e;
+        uint g;
+        uint m;
+        FleetConfig storage fleet = shipsInGame[_ship].fleet.fleetConfig;
+        (,e,g,m) = GameLib.getFleetCost(fleet.attack,fleet.defense,fleet.distance,fleet.load,100);   
+        expend(_ship,e*size,g*size,m*size);
         addFleetToProduction(_ship,size);
     }
 
@@ -539,8 +519,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
                 unsetShipInDefense(_ship);
                 ship.isPortDefender = false;
             }
-        }                
-        else {
+        } else {
             unsetInMapPosition(ship.x,ship.y);
         }
         setInMapPosition(_ship,x,y);
@@ -566,22 +545,28 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         uint lock;
         require(isValidPort(getMapPosition(x,y))); 
         
-        (inRange,lock) = GameLib.checkRange(getPortDistance(_ship),ship.mode, ship.damage);
-        require(inRange);
+        if (ship.isPortDefender && defense == false) {
+            unsetShipInDefense(_ship);
+            ship.isPortDefender = false;
 
-        ship.lock.move = lock;
-        collectResourcesAndSub(_ship,0,0,0);
-        unsetInMapPosition(ship.x,ship.y);
-        ship.inPort = true;
-        if (defense == true) {
-            require(getFleetSize(_ship) > 0);
-            setShipInDefense(_ship);
-            ship.isPortDefender = true;
+        } else {
+            (inRange,lock) = GameLib.checkRange(getPortDistance(_ship),ship.mode, ship.damage);
+            require(inRange);
+
+            ship.lock.move = lock;
+            collectResourcesAndSub(_ship,0,0,0);
+            unsetInMapPosition(ship.x,ship.y);
+            ship.inPort = true;
+            if (defense == true) {
+                require(getFleetSize(_ship) > 0);
+                setShipInDefense(_ship);
+                ship.isPortDefender = true;
+            }
+            ship.x = x;
+            ship.y = y;
+            ship.resourceDensity[1] = 0;
+            ship.resourceDensity[2] = 0;
         }
-        ship.x = x;
-        ship.y = y;
-        ship.resourceDensity[1] = 0;
-        ship.resourceDensity[2] = 0;
     }
 
     function changeMode(uint _ship, uint _mode) 
@@ -602,13 +587,14 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         uint energy;
         uint graphene;
         uint metal;
-        uint lock;
-        uint level = _getBuildingLevelByType(shipsInGame[_ship].buildings, _type) + 1;
+        uint end;
+        uint level = getBuildingLevelByType(shipsInGame[_ship].buildings, _type) + 1;
         require(level <= 4);
-        (energy,graphene,metal,lock) = GameLib.getUpgradeBuildingCost(_type,level,shipsInGame[_ship].damage);
-        shipsInGame[_ship].lock.building = lock;
-        expend(_ship,energy,graphene,metal);
-        _addBuildingLevel(shipsInGame[_ship].buildings,_type);
+        (energy,graphene,metal,end) = GameLib.getUpgradeBuildingCost(_type,level,shipsInGame[_ship].damage);
+
+        collectResourcesAndSub(_ship,energy,graphene,metal);
+        shipsInGame[_ship].buildings.endUpgrade = end;
+        addBuildingLevel(shipsInGame[_ship].buildings,_type);
     }
 
     function upgradeResourceInternal(uint _ship, uint _type, uint _index)
@@ -618,15 +604,15 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         uint energy;
         uint graphene;
         uint metal;
-        uint lock;
-        uint level = _getResourceLevelByType(s.resources, _type, _index) + 1;
+        uint end;
+        uint level = getResourceLevelByType(s.resources, _type, _index) + 1;
         
         require(level <= 10);
-        (energy,graphene,metal,lock) = GameLib.getUpgradeResourceCost(_type,level,s.damage);
+        (energy,graphene,metal,end) = GameLib.getUpgradeResourceCost(_type,level,s.damage);
 
-        s.lock.resource = lock;
         collectResourcesAndSub(_ship,energy,graphene,metal);
-        _addResourceLevel(s.resources,_type,_index);
+        s.resources.endUpgrade = end;
+        addResourceLevel(s.resources,_type,_index);
     }
 
     /*
@@ -681,14 +667,14 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             uint x,
             uint y,
             uint mode,
-            uint damage
+            bool inPort
         )
     {
         shipName = shipsInGame[_ship].shipName;
         x = shipsInGame[_ship].x;
         y = shipsInGame[_ship].y;
         mode = shipsInGame[_ship].mode;
-        damage = shipsInGame[_ship].damage;
+        inPort = shipsInGame[_ship].inPort;
     }
 
     function viewBuildingLevel(uint _ship)
@@ -698,12 +684,12 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         (
             uint warehouse,
             uint hangar,
-            uint cannon
+            uint cannon,
+            uint buildingUpgrading
         )
     {
-        hangar = shipsInGame[_ship].buildings.hangarLevel;
-        warehouse = shipsInGame[_ship].buildings.warehouseLevel;
-        cannon = shipsInGame[_ship].buildings.cannonLevel;
+        (warehouse,hangar,cannon) = getBuildingLevel(shipsInGame[_ship].buildings);
+        buildingUpgrading = shipsInGame[_ship].buildings.level[0];
     }
 
 
@@ -715,13 +701,15 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             uint energy,
             uint graphene,
             uint metal,
-            uint[12] memory energyLevel,
+            uint[6] memory energyLevel,
             uint grapheneCollectorLevel,
-            uint metalCollectorLevel
+            uint metalCollectorLevel,
+            uint resourceUpgrading
         )
     {
-        (energy,graphene,metal) = getProductionPerBlock(_ship);
-        (energyLevel,grapheneCollectorLevel,metalCollectorLevel) = _getResourceLevel(shipsInGame[_ship].resources);
+        (energy,graphene,metal) = getProductionPerBlock(_ship,true);
+        (energyLevel,grapheneCollectorLevel,metalCollectorLevel) = getResourceLevel(shipsInGame[_ship].resources);
+        resourceUpgrading = shipsInGame[_ship].resources.level[0];
     }
 
     function viewShipVars(uint _ship)
@@ -732,27 +720,30 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             uint energyStock,
             uint grapheneStock,
             uint metalStock,
-            // Agregar Nivel de Warehouse
-            uint countdownToUpgradeResources,
-            uint countdownToUpgradeBuildings,
+            uint endUpgradeResource,
+            uint endUpgradeBuilding,
             uint countdownToMove,
             uint countdownToFleet,
             uint countdownToMode,
-            uint countdownToFireCannon
+            uint countdownToFireCannon,
+            uint damage
         )
     {
         uint b = block.number;
         GameSpaceShip storage ship = shipsInGame[_ship];
         (energyStock,grapheneStock,metalStock) = getResources(_ship);
-        if (b > ship.lock.resource) 
-            countdownToUpgradeResources = 0;
-        else
-            countdownToUpgradeResources = ship.lock.resource - b;
+ 
+        damage = ship.damage;     
 
-        if (b > ship.lock.building) 
-            countdownToUpgradeBuildings = 0;
+        if (b > ship.resources.endUpgrade) 
+            endUpgradeResource = 0;
         else
-            countdownToUpgradeBuildings = ship.lock.building - b;
+            endUpgradeResource = ship.resources.endUpgrade - b;
+
+        if (b > ship.buildings.endUpgrade) 
+            endUpgradeBuilding = 0;
+        else
+            endUpgradeBuilding = ship.buildings.endUpgrade - b;
 
         if (b > ship.lock.move) 
             countdownToMove = 0;
@@ -794,15 +785,24 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             uint blocksToEndProduction
         )
     {
+        (fleetType, energyCost, grapheneCost, metalCost) = getFleetCost(_ship);
+        (attack, defense, distance, load) = getFleetConfig(_ship);
+        (size,inProduction,endProduction,blocksToEndProduction) = getFleetProduction(_ship);
+        
+    }
+
+    function getFleetProduction(uint _ship)
+        internal
+        view
+        returns
+        (
+            uint size,
+            uint inProduction,
+            uint endProduction,
+            uint blocksToEndProduction
+        )
+    {
         GameSpaceShip storage ship = shipsInGame[_ship];
-        fleetType = ship.fleet.fleetDesign.fleetType;
-        energyCost = ship.fleet.fleetCost.energy;
-        grapheneCost = ship.fleet.fleetCost.graphene;
-        metalCost = ship.fleet.fleetCost.metal;
-        attack = ship.fleet.fleetDesign.attack;
-        defense = ship.fleet.fleetDesign.defense;
-        distance = ship.fleet.fleetDesign.distance;
-        load = ship.fleet.fleetDesign.load;
         endProduction = ship.fleet.fleetEndProduction;
         if (endProduction <= block.number) {
             size = ship.fleet.fleetSize + ship.fleet.fleetInProduction;
@@ -816,6 +816,38 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         }
     }
 
+    function getFleetConfig(uint _ship)
+        internal
+        view
+        returns
+        (
+            uint attack,
+            uint defense,
+            uint distance,
+            uint load
+        )
+    {
+        FleetConfig storage fleet = shipsInGame[_ship].fleet.fleetConfig;
+        attack = fleet.attack;
+        defense = fleet.defense;
+        distance = fleet.distance;
+        load = fleet.load;
+    }
+
+    function getFleetCost(uint _ship)
+        internal
+        view
+        returns
+        (
+            uint fleetType, 
+            uint energyCost, 
+            uint grapheneCost, 
+            uint metalCost
+        )
+    {
+        FleetConfig storage fleet = shipsInGame[_ship].fleet.fleetConfig;
+        (fleetType, energyCost, grapheneCost, metalCost) = GameLib.getFleetCost(fleet.attack,fleet.defense,fleet.distance,fleet.load,100); 
+    }
 
     function fireCannonInternal(uint _from,uint _to)
         internal
@@ -826,6 +858,8 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         uint cost;
         uint lock;
         uint damage;
+        uint energy;
+        uint cons;
         /*
          * Trae la distancia
          */
@@ -833,7 +867,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
 
         (inRange,damage,cost,lock) = GameLib.checkCannonRange(
             getShipDistance(_from,_to),
-            from.buildings.cannonLevel,
+            getCannonLevel(_from),
             from.damage
         );
 
@@ -849,6 +883,15 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         else {
             collectResourcesAndSub(_to, 0,0,0);
             to.damage = to.damage + damage;
+            /*
+             * Luego de disparado el cañon, hay que revisar que 
+             * si se puede soportar una flota del tamaño
+             */
+            (energy,,) = getProductionPerBlock(_to,false);
+            cons = getFleetConsumption(_to);
+            if (energy < cons) {
+                killFleet(_to,cons-energy);
+            }
             emit FireCannonEvent(_from,_to,to.damage,false);
         }
     }
@@ -908,6 +951,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
              */
             if (spacialPort.owner != shipsInGame[_from].owner) {
                 candidate = shipsInGame[_from].owner;
+                spacialPort.owner = candidate;
                 endBlock = block.number + GameLib.getBlocksToWin();
             }
 
@@ -1017,8 +1061,8 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         uint dSize;
 
         if (aRemain > 0) {
-            (e,g,m) = toSack(_to,shipsInGame[_from].fleet.fleetDesign.load * aRemain);
-            _addWarehouse(shipsInGame[_from].warehouse,e,g,m,shipsInGame[_from].buildings.warehouseLevel);
+            (e,g,m) = toSack(_to,shipsInGame[_from].fleet.fleetConfig.load * aRemain);
+            _addWarehouse(shipsInGame[_from].warehouse,e,g,m,getWarehouseLevel(_from));
         }
         else {
             e = 0;
@@ -1146,38 +1190,43 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         bool build;
         uint end;
 
-        if (a.fleetInProduction > 0)
-            a.fleetSize = a.fleetSize + a.fleetInProduction;
-
-        
+                
         (build, end) = GameLib.getFleetEndProduction(
             size,
-            getFleetSize(_ship),
-            shipsInGame[_ship].buildings.hangarLevel,
+            getHangarLevel(_ship),
+            shipsInGame[_ship].resources.level,
+            shipsInGame[_ship].resources.endUpgrade,
+            getFleetConsumption(_ship),
             shipsInGame[_ship].damage
         );
         require(build);
+        if (a.fleetInProduction > 0)
+            a.fleetSize = a.fleetSize + a.fleetInProduction;
+
         a.fleetInProduction = size;
         a.fleetEndProduction = end;
     }
 
-    function inWarehouse(uint _ship, uint e, uint g, uint m)
+    function killFleet(uint _ship, uint size)
         internal
-        view
-        returns(bool)
     {
-        GameSpaceShip storage s = shipsInGame[_ship];
-        return (s.warehouse.energy >= e && s.warehouse.graphene >= g && s.warehouse.metal >= m);
-    }
-
-    function warehouseFull(uint _ship)
-        internal
-        view
-        returns(bool)
-    {
-        GameSpaceShip storage s = shipsInGame[_ship];
-        uint maxStorage = getWarehouseLoad(_ship);
-        return (s.warehouse.energy == maxStorage || s.warehouse.graphene == maxStorage || s.warehouse.metal == maxStorage);
+        Fleet storage a = shipsInGame[_ship].fleet;
+        uint left;
+        uint _block = block.number;
+        uint prod = a.fleetInProduction;
+        if (prod > 0 ) {
+            if (prod > size) 
+                a.fleetInProduction -= size;
+            else {
+                left = size - prod;
+                a.fleetInProduction = 0;
+                if (a.fleetEndProduction > _block)
+                    a.fleetEndProduction = _block;
+                a.fleetSize -= left;
+            }
+        } else {
+            a.fleetSize -= size;
+        }
     }
 
     function getResources(uint _ship)
@@ -1205,7 +1254,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         view
         returns(uint load)
     {
-        load = GameLib.getWarehouseLoadByLevel(shipsInGame[_ship].buildings.warehouseLevel); 
+        load = GameLib.getWarehouseLoadByLevel(getWarehouseLevel(_ship)); 
     }
 
     function getUnharvestResources(uint _ship)
@@ -1213,14 +1262,25 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         view
         returns(uint energy, uint graphene, uint metal)
     {
-        uint blocks = block.number - shipsInGame[_ship].lastHarvest;
-        (energy,graphene,metal) = getProductionPerBlock(_ship);
-        energy = energy * blocks;
-        graphene = graphene * blocks;
-        metal = metal * blocks;
+        GameSpaceShip storage ship = shipsInGame[_ship];
+        if (!isGameStarted() || !isShipInGame[_ship]) {
+            energy = 0;
+            graphene = 0;
+            metal = 0;
+        }
+        else {
+            (energy,graphene,metal) = GameLib.getUnharvestResources(
+                ship.resources.level, 
+                ship.resources.endUpgrade, 
+                ship.resourceDensity, 
+                getFleetConsumption(_ship),
+                ship.damage, 
+                ship.lastHarvest
+            );
+        }
     }
 
-    function getProductionPerBlock(uint _ship)
+    function getProductionPerBlock(uint _ship, bool withFleet)
         internal
         view
         returns(uint energy, uint graphene, uint metal)
@@ -1233,14 +1293,24 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
             metal = 0;
         }
         else {
-            (energy,graphene,metal) = GameLib.getProduction(
-                ship.resources.energyPanelLevel,
-                ship.resources.grapheneCollectorLevel,
-                ship.resources.metalCollectorLevel,
-                [0,ship.resourceDensity[1], ship.resourceDensity[2]],
-                ship.damage
-            );
-            energy = energy - getFleetConsumption(_ship);
+            if (withFleet) {
+                (energy,graphene,metal) = GameLib.getProduction(
+                    ship.resources.level,
+                    ship.resources.endUpgrade,
+                    ship.resourceDensity, 
+                    getFleetConsumption(_ship),
+                    ship.damage
+                );
+            } else {
+                (energy,graphene,metal) = GameLib.getProduction(
+                    ship.resources.level,
+                    ship.resources.endUpgrade,
+                    ship.resourceDensity, 
+                    0,
+                    ship.damage
+                );
+            }
+
         }
     }
 
@@ -1300,7 +1370,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         view
         returns(uint)
     {
-        return ship.fleet.fleetDesign.distance;
+        return ship.fleet.fleetConfig.distance;
     }
 
     function getFleetRange(uint _ship)
@@ -1309,7 +1379,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         returns(uint)
     {
         Fleet storage a = shipsInGame[_ship].fleet;
-        return a.fleetDesign.distance;
+        return a.fleetConfig.distance;
     }
 
 
@@ -1341,7 +1411,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         returns(uint)
     {
         Fleet storage a = shipsInGame[_ship].fleet;
-        return getFleetSize(_ship) * a.fleetDesign.load;
+        return getFleetSize(_ship) * a.fleetConfig.load;
     }
 
     function setFleetSize(uint _ship, uint size)
@@ -1359,7 +1429,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         returns(uint, uint)
     {
         Fleet storage a = shipsInGame[_ship].fleet;
-        return (a.fleetDesign.attack,getFleetSize(_ship));
+        return (a.fleetConfig.attack,getFleetSize(_ship));
     }
 
     function getFleetAttack(GameSpaceShip storage ship)
@@ -1367,7 +1437,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         view
         returns(uint, uint)
     {
-        return (ship.fleet.fleetDesign.attack,getFleetSize(ship));
+        return (ship.fleet.fleetConfig.attack,getFleetSize(ship));
     }
 
     function getPortDefend()
@@ -1394,7 +1464,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         returns(uint, uint)
     {
         Fleet storage a = shipsInGame[_ship].fleet;
-        return (a.fleetDesign.defense,getFleetSize(_ship));
+        return (a.fleetConfig.defense,getFleetSize(_ship));
     }
 
     function getFleetDefend(GameSpaceShip storage ship)
@@ -1402,7 +1472,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         view
         returns(uint, uint)
     {
-        return (ship.fleet.fleetDesign.defense,getFleetSize(ship));
+        return (ship.fleet.fleetConfig.defense,getFleetSize(ship));
     }
 
     function canDesignFleet(uint _ship) 
@@ -1413,7 +1483,7 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         GameSpaceShip storage ship = shipsInGame[_ship];
         return 
         ( 
-            ship.fleet.fleetDesigned == false || ( ship.fleet.fleetSize == 0 && (ship.fleet.fleetInProduction == 0 || ship.fleet.fleetEndProduction <= block.number ))
+            !fleetConfiged(_ship) || ( ship.fleet.fleetSize == 0 && (ship.fleet.fleetInProduction == 0 || ship.fleet.fleetEndProduction <= block.number ))
         );
     }
 
@@ -1423,88 +1493,173 @@ contract GameShipFactory_linked is GameFactory, GameSpacialPort {
         returns(bool)
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
-        return (ship.fleet.fleetDesigned && ship.fleet.fleetEndProduction <= block.number);
+        return (fleetConfiged(_ship) && ship.fleet.fleetEndProduction <= block.number);
     }
 
+    function fleetConfiged(uint _ship)
+        internal
+        view
+        returns(bool)
+    {
+        FleetConfig storage fleet = shipsInGame[_ship].fleet.fleetConfig;
+        return (fleet.attack != 0 || fleet.defense != 0 || fleet.distance != 0 || fleet.load != 0);
+    }
 
-    function _getResourceLevel (Resources storage r) 
+    function getResourceLevel (Resources storage resource) 
         internal 
         view 
-        returns(uint[12],uint,uint) 
+        returns(uint[6] e, uint g, uint m) 
     {
-        return
-        (
-            r.energyPanelLevel,
-            r.grapheneCollectorLevel,
-            r.metalCollectorLevel
-        );
+        uint i;
+        for ( i = 0; i < 6; i++ ) 
+            e[i] = resource.level[i+1];
+            
+        g = resource.level[uint(GameLib.ResourceIndex.GRAPHENE)];
+        m = resource.level[uint(GameLib.ResourceIndex.METAL)];
+
+        if (block.number < resource.endUpgrade) {
+            i = resource.level[uint(GameLib.ResourceIndex.INDEX_UPGRADING)];
+            if ( i == uint(GameLib.ResourceIndex.GRAPHENE) ) {
+                g--;
+                return;
+            }
+            if ( i == uint(GameLib.ResourceIndex.METAL) ) {
+                m--;
+                return;
+            }
+            e[i-1]--;
+        }
+
+    }
+
+
+
+    function getBuildingLevel (Buildings storage building) 
+        internal 
+        view 
+        returns(uint w, uint h, uint c) 
+    {
+        w = building.level[uint(GameLib.BuildingIndex.WAREHOUSE)];
+        h = building.level[uint(GameLib.BuildingIndex.HANGAR)];
+        c = building.level[uint(GameLib.BuildingIndex.CANNON)];
+
+        if (block.number < building.endUpgrade) {
+            if (building.level[uint(GameLib.BuildingIndex.INDEX_UPGRADING)] == uint(GameLib.BuildingIndex.WAREHOUSE)) {
+                w--;
+                return;
+            }
+            if (building.level[uint(GameLib.BuildingIndex.INDEX_UPGRADING)] == uint(GameLib.BuildingIndex.HANGAR)) {
+                h--;
+                return;
+            }
+            if (building.level[uint(GameLib.BuildingIndex.INDEX_UPGRADING)] == uint(GameLib.BuildingIndex.CANNON)) {
+                c--;
+                return;
+            }
+        }
     }
     
-    function _getResourceLevelByType( Resources storage r, uint _type, uint _index)
+    function getWarehouseLevel(uint _ship)
         internal
         view
         returns(uint)
     {
-        if (_type == 0) {
-            return r.energyPanelLevel[_index];
-        }
-        if (_type == 1) {
-            return r.grapheneCollectorLevel;
-        }
-        if (_type == 2) {
-            return r.metalCollectorLevel;
-        }
-        return 0;
+        return getBuildingLevelByType(shipsInGame[_ship].buildings,0);
     }
 
-    function _addResourceLevel (Resources storage r, uint _type, uint _index) 
-        internal 
-    {
-        if (_type == 0) {
-            r.energyPanelLevel[_index]++;
-            return;
-        }
-        if (_type == 1) { 
-            r.grapheneCollectorLevel++;
-            return;
-        }
-        if (_type == 2) { 
-            r.metalCollectorLevel++;
-            return;
-        }
-    }
-
-
-    function _getBuildingLevelByType( Buildings storage b, uint _type)
+    function getHangarLevel(uint _ship)
         internal
         view
         returns(uint)
     {
+        return getBuildingLevelByType(shipsInGame[_ship].buildings,1);
+    }
+
+    function getCannonLevel(uint _ship)
+        internal
+        view
+        returns(uint)
+    {
+        return getBuildingLevelByType(shipsInGame[_ship].buildings,2);
+    }
+
+    function getResourceLevelByType( Resources storage resource, uint _type, uint _index)
+        internal
+        view
+        returns(uint)
+    {
+        uint[6] memory e;
+        uint g;
+        uint m;
+
+        (e,g,m) = getResourceLevel(resource);
+
+        if (_type == 0) 
+            return e[_index];
+        if (_type == 1) 
+            return g;
+        if (_type == 2) 
+            return m;
+    }
+
+    function addResourceLevel (Resources storage resource, uint _type, uint _index) 
+        internal 
+    {
         if (_type == 0) {
-            return b.warehouseLevel;
+            resource.level[_index+1]++;
+            resource.level[uint(GameLib.ResourceIndex.INDEX_UPGRADING)] = _index+1;
+            return;
         }
         if (_type == 1) {
-            return b.hangarLevel;
+            resource.level[uint(GameLib.ResourceIndex.GRAPHENE)]++; 
+            resource.level[uint(GameLib.ResourceIndex.INDEX_UPGRADING)] = uint(GameLib.ResourceIndex.GRAPHENE);
+            return;
+        }
+        if (_type == 2) { 
+            resource.level[uint(GameLib.ResourceIndex.METAL)]++; 
+            resource.level[uint(GameLib.ResourceIndex.INDEX_UPGRADING)] = uint(GameLib.ResourceIndex.METAL);
+            return;
+        }
+    }
+
+
+    function getBuildingLevelByType( Buildings storage building, uint _type)
+        internal
+        view
+        returns(uint)
+    {
+        uint w;
+        uint h;
+        uint c;
+        (w,h,c) = getBuildingLevel(building);
+        if (_type == 0) {
+            return w;
+        }
+        if (_type == 1) {
+            return h;
         }
         if (_type == 2) {
-            return b.cannonLevel;
+            return c;
         }
         return 0;
     }
     
-    function _addBuildingLevel (Buildings storage b, uint _type)
+    function addBuildingLevel (Buildings storage building, uint _type)
         internal 
     {
         if (_type == 0) {
-            b.warehouseLevel++;
+            building.level[uint(GameLib.BuildingIndex.WAREHOUSE)]++;
+            building.level[uint(GameLib.BuildingIndex.INDEX_UPGRADING)] = uint(GameLib.BuildingIndex.WAREHOUSE);
             return;
         }
-        if (_type == 1) { 
-            b.hangarLevel++;
+        if (_type == 1) {
+            building.level[uint(GameLib.BuildingIndex.HANGAR)]++; 
+            building.level[uint(GameLib.BuildingIndex.INDEX_UPGRADING)] = uint(GameLib.BuildingIndex.HANGAR);
             return;
         }
         if (_type == 2) { 
-            b.cannonLevel++;
+            building.level[uint(GameLib.BuildingIndex.CANNON)]++; 
+            building.level[uint(GameLib.BuildingIndex.INDEX_UPGRADING)] = uint(GameLib.BuildingIndex.CANNON);
             return;
         }
     }

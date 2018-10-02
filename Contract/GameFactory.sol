@@ -3,8 +3,9 @@ pragma solidity 0.4.24;
 import "./Mortal.sol";
 import "./AddressUtils.sol";
 import "./SpaceShipInterface.sol";
+import "./GameSpacialPort.sol";
 
-contract GameFactory is Mortal {
+contract GameFactory is Mortal, GameSpacialPort {
 
     bytes32 version;
     address spaceShipContract;
@@ -116,7 +117,7 @@ contract GameFactory is Mortal {
         gameReady = false;
 
         emit WinnerEvent(
-            candidate,
+            winner,
             address(this).balance
         );
         candidate.transfer(address(this).balance);
@@ -135,6 +136,23 @@ contract GameFactory is Mortal {
         gameReady = true;
     }
 
+    function setGameAttributes(address _shipContract, uint _startAt, uint mapSideSize)
+        external
+        onlyOwnerOrAdmin
+    {
+        setSpaceShipContract(_shipContract);
+        if (_startAt == 0)
+            gameLaunch = block.number;
+        else
+            gameLaunch = _startAt;
+
+        /*
+         * Se le cambia el tamaño al mapa
+         */
+        changeMapSize(mapSideSize);
+        
+        gameReady = true;
+    }
 
     function setSpaceShipContract(address _address)
         internal
