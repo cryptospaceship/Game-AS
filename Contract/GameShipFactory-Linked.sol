@@ -473,15 +473,10 @@ contract GameShipFactory_linked is GameFactory {
         onlyShipOwner(_ship)
         onlyWithHangar(_ship)
     {
-        GameSpaceShip storage ship = shipsInGame[_ship];
-
         require(canDesignFleet(_ship));
-        require(GameLib.validFleetDesign(_attack,_defense,_distance,_load,100));
+        require(GameLib.validFleetDesign(_attack,_defense,_distance,_load,getHangarLevel(_ship),0));
 
-        ship.fleet.fleetConfig.attack = _attack;
-        ship.fleet.fleetConfig.defense = _defense;
-        ship.fleet.fleetConfig.distance = _distance;
-        ship.fleet.fleetConfig.load = _load;
+        setFleetDesign(_ship,_attack,_defense,_distance,_load);
     }
 
     function buildFleet(uint _ship, uint size)
@@ -587,6 +582,17 @@ contract GameShipFactory_linked is GameFactory {
         shipsInGame[_ship].lock.mode = GameLib.lockChangeMode(shipsInGame[_ship].damage);
         expend(_ship,2000,0,0);
         shipsInGame[_ship].mode = _mode;
+    }
+
+    function setFleetDesign(uint _ship, uint _attack, uint _defense, uint _distance, uint _load)
+        internal
+    {
+        GameSpaceShip storage ship = shipsInGame[_ship];
+
+        ship.fleet.fleetConfig.attack = _attack;
+        ship.fleet.fleetConfig.defense = _defense;
+        ship.fleet.fleetConfig.distance = _distance;
+        ship.fleet.fleetConfig.load = _load;
     }
 
     function upgradeBuildingInternal(uint _ship, uint _type)

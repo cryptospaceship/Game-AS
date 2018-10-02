@@ -306,12 +306,13 @@ library GameLib {
     }
 
 
-    function validFleetDesign(uint _attack, uint _defense, uint _distance, uint _load, uint points)
+    function validFleetDesign(uint _attack, uint _defense, uint _distance, uint _load, uint hangarLevel, uint qaim)
         external
         pure
         returns(bool)
     {
         uint p = _attack + _defense + (_distance * 6) + (_load/80);
+        uint points = qaim + getPointsByHangarLevel(hangarLevel);
         return ( p <= points && p != 0);
     }
 
@@ -571,6 +572,15 @@ library GameLib {
                 return 100;
         }
         return (cannonLevel * 5)/distance;
+    }
+
+    function getPointsByHangarLevel(uint hangarLevel)
+        internal
+        pure
+        returns(uint)
+    {
+        uint8[5] memory p = [0,60,70,85,100];
+        return p[hangarLevel];
     }
     
     function getFireCannonCost(bool accuracy)
