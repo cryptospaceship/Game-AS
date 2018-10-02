@@ -19,11 +19,6 @@ contract GameSpacialPort is GameShipMap {
      * This contract Version only have 1 Spacial Port
      */
     SpacialPort spacialPort;
-    uint spacialPortId;
-
-    constructor() public {
-        spacialPortId = 1;
-    }
 
     modifier validPortId(uint _port) {
         require(isValidPort(_port));
@@ -34,7 +29,7 @@ contract GameSpacialPort is GameShipMap {
         external
         onlyOwner
     {
-        setInMapPosition(spacialPortId,x,y);
+        setInMapPosition(1,x,y);
         spacialPort.name = name;
         spacialPort.x = x;
         spacialPort.y = y;
@@ -94,9 +89,9 @@ contract GameSpacialPort is GameShipMap {
 
     function isValidPort(uint _port) 
         internal
-        view
+        pure
         returns(bool)
     {
-        return (_port == spacialPortId);
+        return (_port == 1 );
     }
 }

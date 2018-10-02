@@ -316,6 +316,24 @@ library GameLib {
     }
 
 
+    function calcReturnResourcesFromFleet(uint _hangarLevel, uint _attack, uint _defense, uint _distance, uint _load, uint _size)
+        external
+        pure
+        returns(
+            uint e,
+            uint g,
+            uint m
+        )
+    {
+        uint p = getResourcesToReturn(_hangarLevel);
+        (e,g,m) = getFleetValue(_attack,_defense,_distance,_load,_size);
+        e = p * e / 100;
+        g = p * g / 100;
+        m = p * m / 100;
+    }
+
+
+
     function getFleetCost(uint _attack, uint _defense, uint _distance, uint _load, uint _points)
         external
         pure
@@ -328,9 +346,7 @@ library GameLib {
     {
         uint points = _attack + _defense + (_distance * 6) + (_load/80);
         if ( points <= _points && points != 0) {
-            e = (20*_attack) + (20 * _defense) + (20*(_distance*6)) + (20*(_load/80));
-            g = (70*_defense) + (70*(_distance*6)) + (50*_attack) + (30*(_load/80));
-            m = (70*_attack) + (70*(_load/80)) + (50*_defense) + (30*(_distance*6));
+            (e,g,m) = getFleetCostBasic(_attack,_defense,_distance,_load);
             fleetType = getFleetType(_attack,_defense,_distance,_load);
         }
         else {
@@ -339,6 +355,45 @@ library GameLib {
             m = 0;
             fleetType = 0;
         }
+    }
+
+    function getResourcesToReturn(uint hangarLevel) 
+        internal
+        pure
+        returns(uint)
+    {
+        if (hangarLevel == 0)
+            return 0;
+        return (hangarLevel-1) * 10;
+    }
+
+    function getFleetCostBasic(uint _attack, uint _defense, uint _distance, uint _load)
+        internal
+        pure
+        returns(
+            uint e,
+            uint g,
+            uint m
+        )
+    {
+        e = (20*_attack) + (20 * _defense) + (20*(_distance*6)) + (20*(_load/80));
+        g = (70*_defense) + (70*(_distance*6)) + (50*_attack) + (30*(_load/80));
+        m = (70*_attack) + (70*(_load/80)) + (50*_defense) + (30*(_distance*6));
+    }
+
+    function getFleetValue(uint _attack, uint _defense, uint _distance, uint _load, uint _size)
+        internal
+        pure
+        returns(
+            uint e,
+            uint g,
+            uint m
+        )
+    {
+        (e,g,m) = getFleetCostBasic(_attack,_defense,_distance,_load);
+        e = e * _size;
+        g = g * _size;
+        m = m * _size;
     }
 
     function lockChangeMode(uint damage) 

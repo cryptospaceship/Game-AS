@@ -627,18 +627,32 @@ contract GameShipFactory_linked is GameFactory {
      * Version 1.3-AS Se cambia el nombre a disassembleFleet.
      * Se corrigio el bug de los requerimientos para destruirla
      */
-    function disassembleFleet(uint _ship)
+    function disassembleFleet(uint _ship, uint size)
         external
         isGameStart
         onlyShipOwner(_ship)
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
+        uint fsize = getFleetSize(_ship);
+        uint energy;
+        uint graphene;
+        uint metal;
 
         require(
-            getFleetSize(_ship) > 0 && 
+            fsize > 0 && 
+            size <= fsize &&
             (ship.fleet.fleetInProduction == 0 || ship.fleet.fleetEndProduction <= block.number )
-        );            
-        setFleetSize(_ship,0);
+        );
+        (energy,graphene,metal) = GameLib.calcReturnResourcesFromFleet(
+            getHangarLevel(_ship),
+            ship.fleet.fleetConfig.attack,
+            ship.fleet.fleetConfig.defense,
+            ship.fleet.fleetConfig.distance,
+            ship.fleet.fleetConfig.load,
+            size
+        );     
+        setFleetSize(_ship,fsize-size);
+        _addWarehouse(ship.warehouse,energy,graphene,metal,getWarehouseLevel(_ship));
     }
 
     function getShipByOwner(address owner)
@@ -896,6 +910,7 @@ contract GameShipFactory_linked is GameFactory {
 
         expend(_from,cost,0,0);
         from.lock.fireCannon = lock;
+
         if (accuracy) {
             if ( target <= 8) {
                 /*
