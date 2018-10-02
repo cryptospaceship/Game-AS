@@ -103,6 +103,13 @@ contract GameShipFactory_linked is GameFactory {
         bool _destroyed
     );
 
+    event FireCannonEventAccuracy(
+        uint _from,
+        uint _to,
+        uint _damage,
+        uint _target
+    );
+
     event SentResourcesEvent(
         uint _from,
         uint _to,
@@ -397,6 +404,19 @@ contract GameShipFactory_linked is GameFactory {
 
         fireCannonInternal(_from,_to);
     }
+
+    function fireCannonAccuracy(uint _from, uint _to, uint target)
+        external
+        isGameStart
+        onlyShipOwner(_from)
+        onlyWithCannon(_from)
+        cannonReady(_from)
+        notInPort(_from)
+        notInPort(_to)
+    {
+        firecannonInternalAccuracy(_from,_to,target);
+    }    
+
 
     function sendResources(uint _from, uint _to, uint energy, uint graphene, uint metal)
         external
@@ -849,7 +869,93 @@ contract GameShipFactory_linked is GameFactory {
         (fleetType, energyCost, grapheneCost, metalCost) = GameLib.getFleetCost(fleet.attack,fleet.defense,fleet.distance,fleet.load,100); 
     }
 
-    function fireCannonInternal(uint _from,uint _to)
+    function fireCannonInternalAccuracy(uint _from, uint _to, uint target)
+        internal
+    {
+        GameSpaceShip storage from = shipsInGame[_from];
+        GameSpaceShip storage to = shipsInGame[_to];
+        /* Listado de Targets 
+            1 - 6 Panels
+            7 Graphene
+            8 Metal
+            9 Warehouse
+            10 Hangar
+            11 Wopr
+        */
+        bool inRange;
+        uint cost;
+        uint lock;
+        uint damage;
+        uint energy;
+        uint cons;
+
+        require(from.mode == 2);
+
+        (inRange,damage,cost,lock) = GameLib.checkCannonRange(
+            getShipDistance(_from,_to),
+            getCannonLevel(_from),
+            from.damage,
+            true
+        );
+        require(inRange);
+
+        expend(_from,cost,0,0);
+        from.lock.fireCannon = lock;
+        if ( target <= 8) {
+            /*
+             * Se rompe la produccion por 
+             * eso hay que colectar
+             */
+            collectResourcesAndSub(_to, 0,0,0);
+            destroyResources(_to,target,damage);
+
+            if ( target <= 6 ) {
+                /* 
+                 * Si se rompe un panel de energia 
+                 * quiza hay que romper flota 
+                 */
+                (energy,,) = getProductionPerBlock(_to,false);
+                cons = getFleetConsumption(_to);
+                if (energy < cons) {
+                    killFleet(_to,cons-energy);
+                }
+            }
+        } else {
+            destroyBuildings(_to,target-8, damage);
+        }
+        emit FireCannonEventAccuracy(_from,_to,damage,target);
+    }
+
+    function destroyBuildings(uint _ship, uint building, uint damage) 
+        internal
+    {
+        GameSpaceShip storage ship = shipsInGame[_ship];    
+        if (ship.buildings.level[0] == building) {
+            ship.buildings.level[0] = 0;
+            ship.buildings.endUpgrade = block.number;
+        }
+        if (damage == 100) 
+            ship.buildings.level[building] = 0;
+        else
+            ship.buildings.level[building] = ship.buildings.level[building] / 2;
+    }
+
+    function destroyResources(uint _ship, uint resource, uint damage) 
+        internal
+    {
+        GameSpaceShip storage ship = shipsInGame[_ship];
+
+        if (ship.resources.level[0] == resource) {
+            ship.resources.level[0] = 0;
+            ship.resources.endUpgrade = block.number;
+        }
+        if (damage == 100)
+            ship.resources.level[resource] = 0;
+        else
+            ship.resources.level[resource] = ship.resources.level[resource] / 2;
+    }
+
+    function fireCannonInternal(uint _from, uint _to)
         internal
     {
         GameSpaceShip storage from = shipsInGame[_from];
@@ -868,7 +974,8 @@ contract GameShipFactory_linked is GameFactory {
         (inRange,damage,cost,lock) = GameLib.checkCannonRange(
             getShipDistance(_from,_to),
             getCannonLevel(_from),
-            from.damage
+            from.damage,
+            false
         );
 
         require(inRange);

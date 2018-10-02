@@ -52,22 +52,36 @@ library GameLib {
      * @return cost: El costo de disparar el cañon
      * @return lock: Cantidad de de bloques para esperar el proximo disparo
      */
-    function checkCannonRange(uint distance, uint level, uint shipDamage)
+    function checkCannonRange(uint distance, uint level, uint shipDamage, bool accuracy)
         external
         view
         returns(bool inRange, uint damage, uint cost, uint lock)
     {
-        inRange = (level > 0 && (distance == 1 || (distance == 2 && level == 4)));
-        if (inRange) {
-            damage = getCannonDamage(level,distance);
-            cost = getFireCannonCost();
-            lock = 300; // Esto no me gusta
-            if (shipDamage > 0) {
-                lock = ((100 + shipDamage) * lock) / 100;
+        if (accuracy) {
+            inRange = (distance <= 2 && level == 4);
+            if (inRange) {
+                damage = getCannonDamage(level,distance,true);
+                cost = getFireCannonCost(true);
+                lock = 400; // Esto no me gusta
+                if (shipDamage > 0) {
+                    lock = ((100 + shipDamage) * lock) / 100;
+                }
+                lock = block.number + lock;
             }
-            lock = block.number + lock;
+        } else { 
+            inRange = (level > 0 && (distance == 1 || (distance == 2 && level == 4)));
+            if (inRange) {
+                damage = getCannonDamage(level,distance,false);
+                cost = getFireCannonCost(false);
+                lock = 300; // Esto no me gusta
+                if (shipDamage > 0) {
+                    lock = ((100 + shipDamage) * lock) / 100;
+                }
+                lock = block.number + lock;
+            }
         }
     }
+
 
     /**
      * @dev getProduction(): Calcula la produccion total de la nave
@@ -490,19 +504,27 @@ library GameLib {
         }
     }
 
-    function getCannonDamage(uint cannonLevel, uint distance)
+    function getCannonDamage(uint cannonLevel, uint distance, bool accuracy)
         internal
         pure
         returns (uint)
     {
+        if (accuracy) {
+            if (distance == 2)
+                return 50;
+            else
+                return 100;
+        }
         return (cannonLevel * 5)/distance;
     }
     
-    function getFireCannonCost()
+    function getFireCannonCost(bool accuracy)
         internal
         pure
         returns (uint)
     {
+        if (accuracy)
+            return 3000000;
         return 2000000;
     }
 
