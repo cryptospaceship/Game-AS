@@ -7,7 +7,6 @@ import "./GameSpacialPort.sol";
 
 contract GameFactory is Mortal, GameSpacialPort {
 
-    bytes32 version;
     address spaceShipContract;
     address candidate;
     address winner;
@@ -56,7 +55,6 @@ contract GameFactory is Mortal, GameSpacialPort {
         external
         view
         returns(
-            bytes32 _version, 
             bool _gameReady, 
             uint _gameLaunch,
             uint _gamePlayValue,
@@ -66,7 +64,6 @@ contract GameFactory is Mortal, GameSpacialPort {
             address _winner
         )
     {
-        _version = version;
         _gameReady = gameReady;
         _candidate = candidate;
         _winner = winner;
@@ -89,16 +86,6 @@ contract GameFactory is Mortal, GameSpacialPort {
     modifier onlySpaceShipContract() {
         require(msg.sender == spaceShipContract);
         _;
-    }
-
-    constructor() public {
-        spaceShipContract = address(0);
-        version = "1.3.2-AS";
-        candidate = address(0);
-        endBlock = 0;
-        gameReady = false;
-        gameLaunch = 0;
-        gamePlayValue = 0.1 ether;
     }
 
     event WinnerEvent(
@@ -134,6 +121,7 @@ contract GameFactory is Mortal, GameSpacialPort {
         else
             gameLaunch = _startAt;
         gameReady = true;
+        gamePlayValue = 0.1 ether;
     }
 
     function setGameAttributes(address _shipContract, uint _startAt, uint mapSideSize)
@@ -152,6 +140,7 @@ contract GameFactory is Mortal, GameSpacialPort {
         changeMapSize(mapSideSize);
         
         gameReady = true;
+        gamePlayValue = 0.1 ether;
     }
 
     function setSpaceShipContract(address _address)

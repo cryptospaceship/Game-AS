@@ -392,7 +392,7 @@ contract GameShipFactory_linked is GameFactory {
     }
 
 
-    function fireCannon(uint _from, uint _to)
+    function fireCannon(uint _from, uint _to, uint _target)
         external
         isGameStart
         onlyShipOwner(_from)
@@ -402,20 +402,8 @@ contract GameShipFactory_linked is GameFactory {
         notInPort(_to)
     {
 
-        fireCannonInternal(_from,_to);
+        fireCannonInternal(_from,_to, _target);
     }
-
-    function fireCannonAccuracy(uint _from, uint _to, uint target)
-        external
-        isGameStart
-        onlyShipOwner(_from)
-        onlyWithCannon(_from)
-        cannonReady(_from)
-        notInPort(_from)
-        notInPort(_to)
-    {
-        firecannonInternalAccuracy(_from,_to,target);
-    }    
 
 
     function sendResources(uint _from, uint _to, uint energy, uint graphene, uint metal)
@@ -869,12 +857,13 @@ contract GameShipFactory_linked is GameFactory {
         (fleetType, energyCost, grapheneCost, metalCost) = GameLib.getFleetCost(fleet.attack,fleet.defense,fleet.distance,fleet.load,100); 
     }
 
-    function fireCannonInternalAccuracy(uint _from, uint _to, uint target)
+    function fireCannonInternal(uint _from, uint _to, uint target)
         internal
     {
         GameSpaceShip storage from = shipsInGame[_from];
         GameSpaceShip storage to = shipsInGame[_to];
-        /* Listado de Targets 
+        /* Listado de Targets
+            0 Nave - Se considera un disparo sin punteria
             1 - 6 Panels
             7 Graphene
             8 Metal
@@ -888,6 +877,12 @@ contract GameShipFactory_linked is GameFactory {
         uint damage;
         uint energy;
         uint cons;
+        bool accuracy;
+
+        if (target == 0)
+            accuracy = false;
+        else
+            accuracy = true;
 
         require(from.mode == 2);
 
@@ -895,35 +890,46 @@ contract GameShipFactory_linked is GameFactory {
             getShipDistance(_from,_to),
             getCannonLevel(_from),
             from.damage,
-            true
+            accuracy
         );
         require(inRange);
 
         expend(_from,cost,0,0);
         from.lock.fireCannon = lock;
-        if ( target <= 8) {
-            /*
-             * Se rompe la produccion por 
-             * eso hay que colectar
-             */
-            collectResourcesAndSub(_to, 0,0,0);
-            destroyResources(_to,target,damage);
-
-            if ( target <= 6 ) {
-                /* 
-                 * Si se rompe un panel de energia 
-                 * quiza hay que romper flota 
-                 */
-                (energy,,) = getProductionPerBlock(_to,false);
-                cons = getFleetConsumption(_to);
-                if (energy < cons) {
-                    killFleet(_to,cons-energy);
-                }
+        if (accuracy) {
+            if ( target <= 8) {
+                /*
+                * Se rompe la produccion por 
+                * eso hay que colectar
+                */
+                collectResourcesAndSub(_to, 0,0,0);
+                destroyResources(_to,target,damage);
+              } else {
+                destroyBuildings(_to,target-8, damage);
             }
+            emit FireCannonEventAccuracy(_from,_to,damage,target);
         } else {
-            destroyBuildings(_to,target-8, damage);
+            if (to.damage + damage >= 100) {
+                destroyShip(_to);
+                emit FireCannonEvent(_from,_to,100,true);
+            }
+            else {
+                collectResourcesAndSub(_to, 0,0,0);
+                to.damage = to.damage + damage;
+                /*
+                * Luego de disparado el cañon, hay que revisar que 
+                * si se puede soportar una flota del tamaño
+                */
+                emit FireCannonEvent(_from,_to,to.damage,false);
+            }    
         }
-        emit FireCannonEventAccuracy(_from,_to,damage,target);
+
+        if (target <= 6) {
+            (energy,,) = getProductionPerBlock(_to,false);
+            cons = getFleetConsumption(_to);
+            if (energy < cons) 
+                killFleet(_to,cons-energy);
+        }
     }
 
     function destroyBuildings(uint _ship, uint building, uint damage) 
@@ -954,55 +960,6 @@ contract GameShipFactory_linked is GameFactory {
         else
             ship.resources.level[resource] = ship.resources.level[resource] / 2;
     }
-
-    function fireCannonInternal(uint _from, uint _to)
-        internal
-    {
-        GameSpaceShip storage from = shipsInGame[_from];
-        GameSpaceShip storage to = shipsInGame[_to];
-        bool inRange;
-        uint cost;
-        uint lock;
-        uint damage;
-        uint energy;
-        uint cons;
-        /*
-         * Trae la distancia
-         */
-        require(from.mode == 2);
-
-        (inRange,damage,cost,lock) = GameLib.checkCannonRange(
-            getShipDistance(_from,_to),
-            getCannonLevel(_from),
-            from.damage,
-            false
-        );
-
-        require(inRange);
-
-        expend(_from,cost,0,0);
-        from.lock.fireCannon = lock;
-
-        if (to.damage + damage >= 100) {
-            destroyShip(_to);
-            emit FireCannonEvent(_from,_to,100,true);
-        }
-        else {
-            collectResourcesAndSub(_to, 0,0,0);
-            to.damage = to.damage + damage;
-            /*
-             * Luego de disparado el cañon, hay que revisar que 
-             * si se puede soportar una flota del tamaño
-             */
-            (energy,,) = getProductionPerBlock(_to,false);
-            cons = getFleetConsumption(_to);
-            if (energy < cons) {
-                killFleet(_to,cons-energy);
-            }
-            emit FireCannonEvent(_from,_to,to.damage,false);
-        }
-    }
-
 
     function attackPortInternal(uint _from)
         internal
