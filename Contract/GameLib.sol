@@ -24,6 +24,21 @@ library GameLib {
         WOPR: Cambiar cannon por WOPR
      */
 
+    function getProductionToConverter(uint[9] level, uint endUpgrade)
+        external
+        view
+        returns(uint graphene, uint metal)
+    {
+        if (level[0] == 7 && endUpgrade > block.number)
+            graphene = getProductionByLevel(level[7]-1);
+        else
+            graphene = getProductionByLevel(level[7]);
+
+        if (level[0] == 8 && endUpgrade > block.number)
+            metal = getProductionByLevel(level[8]-1);
+        else
+            metal = getProductionByLevel(level[8]); 
+    }
 
     /**
      * @dev checkRange(): Comprueba si la nave principal se puede mover determinada

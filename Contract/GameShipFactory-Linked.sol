@@ -368,6 +368,32 @@ contract GameShipFactory_linked is GameFactory {
     }
 
 
+    function setResourceConverter(uint _ship, uint graphene, uint metal)
+        external
+        isGameStart
+        onlyShipOwner(_ship)
+        /*
+         * Faltan condiciones
+         */
+    {
+        GameSpaceShip storage ship = shipsInGame[_ship];
+        uint g;
+        uint m;
+
+        (g,m) = GameLib.getProductionToConverter(ship.resources.level,ship.resources.endUpgrade);
+        require(graphene <= g && metal <= m);
+        collectResourcesAndSub(_ship,0,0,0);
+        if (graphene < ship.resources.gConverter || metal < ship.resources.mConverter ) {
+            ship.resources.gConverter = graphene;
+            ship.resources.mConverter = metal;
+            cutToMaxFleet(_ship);
+        } else {
+            ship.resources.gConverter = graphene;
+            ship.resources.mConverter = metal;
+        }
+        
+    }
+
     function attackShip(uint _from, uint _to)
         external
         isGameStart
@@ -897,8 +923,6 @@ contract GameShipFactory_linked is GameFactory {
         uint cost;
         uint lock;
         uint damage;
-        uint energy;
-        uint cons;
         bool accuracy;
 
         if (target == 0)
@@ -948,10 +972,7 @@ contract GameShipFactory_linked is GameFactory {
         }
 
         if (target <= 6) {
-            (energy,,) = getProductionPerBlock(_to,false);
-            cons = getFleetConsumption(_to);
-            if (energy < cons) 
-                killFleet(_to,cons-energy);
+            cutToMaxFleet(_to);
         }
     }
 
@@ -1137,6 +1158,18 @@ contract GameShipFactory_linked is GameFactory {
             distance
         );
     }
+
+    function cutToMaxFleet(uint _ship)
+        internal
+    {
+        uint energy;
+        uint cons;
+        (energy,,) = getProductionPerBlock(_ship,false);
+        cons = getFleetConsumption(_ship);
+        if (energy < cons) 
+            killFleet(_ship,cons-energy);
+    }
+
 
     function attackShipResult(uint _from, uint _to, uint aRemain, uint dRemain)
         internal
