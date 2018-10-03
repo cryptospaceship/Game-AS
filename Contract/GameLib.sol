@@ -18,7 +18,7 @@ library GameLib {
         INDEX_UPGRADING,
         WAREHOUSE,
         HANGAR,
-        CANNON
+        WOPR
     }
     /**
         WOPR: Cambiar cannon por WOPR
@@ -71,15 +71,15 @@ library GameLib {
      * @return cost: El costo de disparar el cañon
      * @return lock: Cantidad de de bloques para esperar el proximo disparo
      */
-    function checkCannonRange(uint distance, uint level, uint shipDamage, bool accuracy)
+    function checkCannonRange(uint distance, uint level, uint shipDamage, bool accuracy, bool isOtherReparer)
         external
         view
         returns(bool inRange, uint damage, uint cost, uint lock)
     {
         if (accuracy) {
-            inRange = (distance <= 2 && level == 4);
+            inRange = (distance <= 2 && level == 2);
             if (inRange) {
-                damage = getCannonDamage(level,distance,true);
+                damage = getCannonDamage(level,distance,true,isOtherReparer);
                 cost = getFireCannonCost(true);
                 lock = 400; // Esto no me gusta
                 if (shipDamage > 0) {
@@ -88,9 +88,9 @@ library GameLib {
                 lock = block.number + lock;
             }
         } else { 
-            inRange = (level > 0 && (distance == 1 || (distance == 2 && level == 4)));
+            inRange = (level > 0 && (distance == 1 || (distance == 2 && level == 2)));
             if (inRange) {
-                damage = getCannonDamage(level,distance,false);
+                damage = getCannonDamage(level,distance,false,isOtherReparer);
                 cost = getFireCannonCost(false);
                 lock = 300; // Esto no me gusta
                 if (shipDamage > 0) {
@@ -595,18 +595,28 @@ library GameLib {
         }
     }
 
-    function getCannonDamage(uint cannonLevel, uint distance, bool accuracy)
+    function getCannonDamage(uint cannonLevel, uint distance, bool accuracy, bool isOtherReparer)
         internal
         pure
-        returns (uint)
+        returns (uint ret)
     {
+        uint rdiv;
+
+        if (isOtherReparer)
+            rdiv = 2;
+        else
+            rdiv = 1;
+
         if (accuracy) {
             if (distance == 2)
-                return 50;
+                ret = 50;
             else
-                return 100;
+                ret = 100;
         }
-        return (cannonLevel * 5)/distance;
+        else {
+            ret = (cannonLevel * 10)/distance;
+        }
+        ret = ret / rdiv;
     }
 
     function getPointsByHangarLevel(uint hangarLevel)
