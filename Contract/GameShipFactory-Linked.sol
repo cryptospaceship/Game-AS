@@ -48,7 +48,9 @@ contract GameShipFactory_linked is GameFactory {
          * 8: Metal
          */
         uint[9] level;
-        uint endUpgrade;    
+        uint endUpgrade;
+        uint gConverter;
+        uint mConverter;
     }
 
     struct GameSpaceShip {
@@ -492,7 +494,7 @@ contract GameShipFactory_linked is GameFactory {
         FleetConfig storage fleet = shipsInGame[_ship].fleet.fleetConfig;
         (,e,g,m) = GameLib.getFleetCost(fleet.attack,fleet.defense,fleet.distance,fleet.load,100);   
         expend(_ship,e*size,g*size,m*size);
-        addFleetToProduction(_ship,size);
+        addFleet(_ship,size);
     }
 
 
@@ -1267,24 +1269,31 @@ contract GameShipFactory_linked is GameFactory {
     }
 
 
-    function addFleetToProduction(uint _ship, uint size)
+    function addFleet(uint _ship, uint size)
         internal
-        returns(bool, uint)
     {
-        Fleet storage a = shipsInGame[_ship].fleet;
         bool build;
         uint end;
 
-                
         (build, end) = GameLib.getFleetEndProduction(
             size,
             getHangarLevel(_ship),
             shipsInGame[_ship].resources.level,
             shipsInGame[_ship].resources.endUpgrade,
             getFleetConsumption(_ship),
-            shipsInGame[_ship].damage
+            shipsInGame[_ship].damage,
+            shipsInGame[_ship].resources.gConverter,
+            shipsInGame[_ship].resources.mConverter
         );
+
         require(build);
+        addFleetToProduction(_ship,size,end);
+    }
+
+    function addFleetToProduction(uint _ship, uint size, uint end)
+        internal
+    {
+        Fleet storage a = shipsInGame[_ship].fleet;
         if (a.fleetInProduction > 0)
             a.fleetSize = a.fleetSize + a.fleetInProduction;
 
@@ -1348,21 +1357,27 @@ contract GameShipFactory_linked is GameFactory {
         returns(uint energy, uint graphene, uint metal)
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
+        uint[3] memory resources;
         if (!isGameStarted() || !isShipInGame[_ship]) {
             energy = 0;
             graphene = 0;
             metal = 0;
         }
         else {
-            (energy,graphene,metal) = GameLib.getUnharvestResources(
+            resources = GameLib.getUnharvestResources(
                 ship.resources.level, 
                 ship.resources.endUpgrade, 
                 ship.resourceDensity, 
                 getFleetConsumption(_ship),
                 ship.damage, 
-                ship.lastHarvest
+                ship.lastHarvest,
+                ship.resources.gConverter,
+                ship.resources.mConverter
             );
         }
+        energy = resources[0];
+        graphene = resources[1];
+        metal = resources[2];
     }
 
     function getProductionPerBlock(uint _ship, bool withFleet)
@@ -1384,7 +1399,9 @@ contract GameShipFactory_linked is GameFactory {
                     ship.resources.endUpgrade,
                     ship.resourceDensity, 
                     getFleetConsumption(_ship),
-                    ship.damage
+                    ship.damage,
+                    ship.resources.gConverter,
+                    ship.resources.mConverter
                 );
             } else {
                 (energy,graphene,metal) = GameLib.getProduction(
@@ -1392,7 +1409,9 @@ contract GameShipFactory_linked is GameFactory {
                     ship.resources.endUpgrade,
                     ship.resourceDensity, 
                     0,
-                    ship.damage
+                    ship.damage,
+                    ship.resources.gConverter,
+                    ship.resources.mConverter
                 );
             }
 

@@ -20,6 +20,10 @@ library GameLib {
         HANGAR,
         CANNON
     }
+    /**
+        WOPR: Cambiar cannon por WOPR
+     */
+
 
     /**
      * @dev checkRange(): Comprueba si la nave principal se puede mover determinada
@@ -90,19 +94,21 @@ library GameLib {
      * @param density Array de dos posisciones con la densidad de Graphene y Metal
      * @param eConsumption consumo de la nave
      * @param damage Daño de la nave principal (Afecta la produccion)
+     * @param gConverter Graphene converter
+     * @param mConverter Metal converter
      * @return energy: Produccion total de energia
      * @return graphene: Produccion total de graphene
      * @return metal: Produccion total de metales
      */
-    function getProduction(uint[9] rLevel, uint endUpgrade, uint[3] density, uint eConsumption, uint damage)
+    function getProduction(uint[9] rLevel, uint endUpgrade, uint[3] density, uint eConsumption, uint damage, uint gConverter, uint mConverter)
         external
         view
         returns(uint energy, uint graphene, uint metal)
     {
         if (endUpgrade > block.number)
-            (energy,graphene,metal) = getProductionInternal(subResourceLevel(rLevel),density,eConsumption,damage);
+            (energy,graphene,metal) = getProductionInternal(subResourceLevel(rLevel),density,eConsumption,damage,gConverter,mConverter);
         else
-            (energy,graphene,metal) = getProductionInternal(rLevel,density,eConsumption,damage);        
+            (energy,graphene,metal) = getProductionInternal(rLevel,density,eConsumption,damage,gConverter,mConverter);        
     }
 
     /**
@@ -122,11 +128,15 @@ library GameLib {
      * @param eConsumption Consumo de enegia
      * @param damage Daño de la nave
      * @param lastHarvest Ultima vez que se "cosecho"
+     * @param gConverter Graphene converter
+     * @param mConverter Metal converter
      */
-    function getUnharvestResources(uint[9] rLevel, uint endUpgrade, uint[3] density, uint eConsumption, uint damage, uint lastHarvest)
+
+    function getUnharvestResources(uint[9] rLevel, uint endUpgrade, uint[3] density, uint eConsumption, uint damage, uint lastHarvest, uint gConverter, uint mConverter)
         external
         view
-        returns(uint energy, uint graphene, uint metal)
+        //returns(uint energy, uint graphene, uint metal)
+        returns(uint[3] resources)
     {
         uint b = block.number;
         uint diff;
@@ -134,9 +144,12 @@ library GameLib {
         uint g;
         uint m;
 
-        energy = 0;
-        graphene = 0;
-        metal = 0;
+        //energy = 0;
+        //graphene = 0;
+        //metal = 0;
+        resources[0] = 0;
+        resources[1] = 0;
+        resources[2] = 0;
 
         if (endUpgrade > b) {
             /*
@@ -144,7 +157,7 @@ library GameLib {
              * entonces quiere decir que hay un nivel que no hay que contemplarlo
              * que es el que se esta ampliando
              */
-            (e,g,m) = getProductionInternal(subResourceLevel(rLevel),density,eConsumption,damage);
+            (e,g,m) = getProductionInternal(subResourceLevel(rLevel),density,eConsumption,damage,gConverter,mConverter);
             diff = b - lastHarvest;
 
         } else {
@@ -162,30 +175,30 @@ library GameLib {
 
                 // 1
                 diff = endUpgrade - lastHarvest;
-                (e,g,m) = getProductionInternal(subResourceLevel(rLevel),density,eConsumption,damage);
-                energy = e * diff;
-                graphene = g * diff;
-                metal = m * diff;
+                (e,g,m) = getProductionInternal(subResourceLevel(rLevel),density,eConsumption,damage,gConverter,mConverter);
+                resources[0] = e * diff;
+                resources[1] = g * diff;
+                resources[2] = m * diff;
 
                 // 2
                 diff = b - endUpgrade;
-                (e,g,m) = getProductionInternal(rLevel,density,eConsumption,damage);
+                (e,g,m) = getProductionInternal(rLevel,density,eConsumption,damage,gConverter,mConverter);
             }
             else {
                 /*
                  * La ultima cosecha fue posterior a la cuando finalizo la construccion
                  */
                 diff = b - lastHarvest;
-                (e,g,m) = getProductionInternal(rLevel,density,eConsumption,damage);
+                (e,g,m) = getProductionInternal(rLevel,density,eConsumption,damage,gConverter,mConverter);
             }
         }
 
         /*
          * Suma todos los recursos
-         */ 
-        energy = energy + (e * diff);
-        graphene = graphene + (g * diff);
-        metal = metal + (m * diff);
+         */
+        resources[0] = resources[0] + (e * diff);
+        resources[1] = resources[1] + (g * diff);
+        resources[2] = resources[2] + (m * diff);
     }
 
     /**
@@ -195,25 +208,27 @@ library GameLib {
      * @param density Array de dos posisciones con la densidad de Graphene y Metal
      * @param eConsumption consumo de la nave
      * @param damage Daño de la nave principal (Afecta la produccion)
+     * @param gConverter Graphene converter
+     * @param mConverter Metal converter
      * @return energy: Produccion total de energia
      * @return graphene: Produccion total de graphene
      * @return metal: Produccion total de metales
      */
-    function getProductionInternal(uint[9] rLevel, uint[3] density, uint eConsumption, uint damage)
+    function getProductionInternal(uint[9] rLevel, uint[3] density, uint eConsumption, uint damage, uint gConverter, uint mConverter)
         internal
         pure
         returns(uint energy, uint graphene, uint metal)
     {
         uint s;
-        graphene = getProductionByLevel(rLevel[7]) * density[1];
-        metal = getProductionByLevel(rLevel[8]) * density[2];
+        graphene = (getProductionByLevel(rLevel[7]) - gConverter) * density[1];
+        metal = (getProductionByLevel(rLevel[8]) - mConverter) * density[2];
 
         if (damage != 0) {
             s = 100 - damage;
             graphene = s * graphene / 100;
             metal = s * metal / 100;
         }
-        energy = getEnergyProduction(rLevel, eConsumption,damage);
+        energy = getEnergyProduction(rLevel, eConsumption,damage,gConverter+mConverter);
     }
 
     function subResourceLevel(uint[9] level)
@@ -227,7 +242,7 @@ library GameLib {
     }
 
 
-    function getEnergyProduction(uint[9] panels, uint eConsumption, uint damage)
+    function getEnergyProduction(uint[9] panels, uint eConsumption, uint damage, uint aEnergy)
         internal
         pure
         returns(uint energy)
@@ -237,6 +252,7 @@ library GameLib {
         for (i = 1; i <= 6; i++) {
             energy = energy + (getProductionByLevel(panels[i]) * 2);
         }
+        energy = energy + aEnergy;
         if (damage != 0) {
             energy = (100 - damage) * energy / 100;
         }
@@ -288,7 +304,7 @@ library GameLib {
         (aRemain,dRemain) = shipCombatCalcInternal(attacker[0],attacker[1],attacker[3],defender[0],defender[1],defender[2]);
     }
     
-    function getFleetEndProduction(uint size, uint hangarLevel, uint[9] rLevel, uint resourceEndUpgrade, uint eConsumption, uint damage)
+    function getFleetEndProduction(uint size, uint hangarLevel, uint[9] rLevel, uint resourceEndUpgrade, uint eConsumption, uint damage, uint gConverter, uint mConverter)
         external
         view
         returns(bool,uint)
@@ -301,8 +317,8 @@ library GameLib {
             ret = ((100 + damage) * ret) / 100;
         }
         if (resourceEndUpgrade > _block)
-            return ((size <= getEnergyProduction(subResourceLevel(rLevel), eConsumption, damage)),(_block + ret));
-        return ((size <= getEnergyProduction(rLevel, eConsumption, damage)),(_block + ret));
+            return ((size <= getEnergyProduction(subResourceLevel(rLevel), eConsumption, damage, gConverter+mConverter)),(_block + ret));
+        return ((size <= getEnergyProduction(rLevel, eConsumption, damage, gConverter+mConverter)),(_block + ret));
     }
 
 
@@ -328,7 +344,7 @@ library GameLib {
     {
         uint p = getResourcesToReturn(_hangarLevel);
         (e,g,m) = getFleetValue(_attack,_defense,_distance,_load,_size);
-        e = p * e / 100;
+        e = 0;
         g = p * g / 100;
         m = p * m / 100;
     }
@@ -432,7 +448,11 @@ library GameLib {
             148156 Level 3
             684855 Level 4 
         */
-        if (_type == 2) {
+
+        /*
+            WOPR: _type == 2 ahora es el WOPR y habria que multiplicar por 4 y utilizar 3 y 4
+         */
+        if (_type == 2) { 
             energy = buildingCost[_level]*3;
             graphene = buildingCost[_level]*3;
             metal = buildingCost[_level]*3;
