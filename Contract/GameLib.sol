@@ -24,7 +24,21 @@ library GameLib {
         WOPR: Cambiar cannon por WOPR
      */
 
-    function getProductionToConverter(uint[9] level, uint endUpgrade)
+    function getConvertionRate(uint resource, uint converterLevel, uint damage)
+        external
+        view
+        returns(uint resConverted, uint lock)
+    {
+        if (converterLevel == 2)
+            resConverted = resource / 2;
+        else
+            resConverted = resource / 4;
+
+        lock = lockConverter(converterLevel,damage);
+    }
+
+
+    function getProductionToConverter(uint[9] level, uint endUpgrade, uint converterLevel)
         external
         view
         returns(uint graphene, uint metal)
@@ -38,6 +52,11 @@ library GameLib {
             metal = getProductionByLevel(level[8]-1);
         else
             metal = getProductionByLevel(level[8]); 
+
+        if (converterLevel == 1) {
+            graphene = graphene / 2;
+            metal = metal / 2;
+        }
     }
 
     /**
@@ -59,6 +78,18 @@ library GameLib {
             lock = lockMovemment(distance,mode,damage);
         else
             lock = 0;
+    }
+
+    function checkRepair(uint distance, uint level, uint damageToRepair, uint damage)
+        external
+        view
+        returns(bool valid, uint energy, uint graphene, uint metal, uint lock)
+    {
+        valid = (distance == 1 && ( (level == 1 && damageToRepair <=10) || (level == 2 && damageToRepair <= 20)));
+        if (valid) {
+            (energy,graphene,metal) = getRepairCost(damageToRepair);
+            lock = lockRepair(level,damage);
+        }
     }
 
     /**
@@ -146,7 +177,6 @@ library GameLib {
      * @param gConverter Graphene converter
      * @param mConverter Metal converter
      */
-
     function getUnharvestResources(uint[9] rLevel, uint endUpgrade, uint[3] density, uint eConsumption, uint damage, uint lastHarvest, uint gConverter, uint mConverter)
         external
         view
@@ -291,7 +321,7 @@ library GameLib {
             return;
         }
 
-        (aRemain, dRemain) = portCombarCalcInternal(attacker[0],attacker[1],dPoints,dSize);
+        (aRemain, dRemain) = portCombatCalcInternal(attacker[0],attacker[1],dPoints,dSize);
     }
 
     function shipCombatCalc(uint[5] attacker, uint[3] defender, uint distance)
@@ -468,9 +498,9 @@ library GameLib {
             WOPR: _type == 2 ahora es el WOPR y habria que multiplicar por 4 y utilizar 3 y 4
          */
         if (_type == 2) { 
-            energy = buildingCost[_level]*3;
-            graphene = buildingCost[_level]*3;
-            metal = buildingCost[_level]*3;
+            energy = buildingCost[_level+2]*4;
+            graphene = buildingCost[_level+2]*4;
+            metal = buildingCost[_level+2]*4;
         } else {
             energy = buildingCost[_level];
             graphene = buildingCost[_level];
@@ -638,7 +668,17 @@ library GameLib {
         return 2000000;
     }
 
-    function portCombarCalcInternal(uint aPoints, uint aSize, uint[5] dPoints, uint[5] dSize)
+    function getRepairCost(uint units)
+        internal
+        pure
+        returns(uint energy, uint graphene, uint metal)
+    {
+        energy = 100000 * units;
+        graphene = 200000 * units;
+        metal = 200000 * units;
+    }
+
+    function portCombatCalcInternal(uint aPoints, uint aSize, uint[5] dPoints, uint[5] dSize)
         internal
         pure
         returns(uint aRemain, uint[5] dRemain)
@@ -657,9 +697,9 @@ library GameLib {
 
         if (attackerPoints > defenderPoints) {
             // Gano el atacante
-            s = 100-(100*defenderPoints/attackerPoints);
+            s = 100-(_divRound(100*defenderPoints,attackerPoints));
             if ( s != 0 ) {
-                aRemain = s*aSize/100;
+                aRemain = _divRound(s*aSize,100);
                 if (aRemain == 0)
                     aRemain = 1;
             } else {
@@ -675,13 +715,28 @@ library GameLib {
                 if (dSize[i] == 0 || dPoints[i] == 0) {
                     dRemain[i] = 0;
                 } else {
-                    p = (dPoints[i] * dSize[i] * 100) / defenderPoints;
-                    dRemain[i] = ((p * s) / 100) / dPoints[i];
+                    p = _divRound(dPoints[i] * dSize[i] * 100, defenderPoints);
+                    dRemain[i] = _divRound(p * s, 100);
+                    dRemain[i] = _divRound(dRemain[i],dPoints[i]);
                     if (dRemain[i] == 0)
                         dRemain[i] = 1;
                 }
             }
         }
+    }
+
+    function _divRound(uint a, uint b) 
+        internal
+        pure
+        returns(uint)
+    {
+        uint d = ((a * 100) / b);
+        uint r = d % 100;
+        d = d / 100;
+
+        if (r >= 50) 
+            return d + 1;
+        return d;
     }
 
 
@@ -822,6 +877,40 @@ library GameLib {
         return block.number + ret;
     }
     
+    function lockRepair(uint level, uint damage)
+        internal
+        view
+        returns(uint)
+    {
+        uint ret;
+        if (level == 1)
+            ret = 600;
+        else
+            ret = 450;
+
+        if (damage > 0) {
+            ret = ((100 + damage) * ret) / 100;
+        }
+        return block.number + ret;
+    }
+
+    function lockConverter(uint level, uint damage)
+        internal
+        view
+        returns(uint)
+    {
+        uint ret;
+        if (level == 1)
+            ret = 700;
+        else
+            ret = 500;
+
+        if (damage > 0) {
+            ret = ((100 + damage) * ret) / 100;
+        }
+        return block.number + ret;
+    }
+
     function lockMovemment(uint distance, uint mode, uint damage)
         internal
         view

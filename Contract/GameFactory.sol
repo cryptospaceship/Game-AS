@@ -7,15 +7,16 @@ import "./GameSpacialPort.sol";
 
 contract GameFactory is Mortal, GameSpacialPort {
 
+    SpaceShipInterface spaceShipInterface;
     address spaceShipContract;
     address candidate;
     address winner;
     address admin;
-    SpaceShipInterface spaceShipInterface;
     bool gameReady;
     uint gameLaunch;
     uint gamePlayValue;
     uint endBlock;
+    uint players;
 
 
     using AddressUtils for address;
@@ -60,6 +61,7 @@ contract GameFactory is Mortal, GameSpacialPort {
             uint _gamePlayValue,
             uint _endBlock,
             uint _reward,
+            uint _players,
             address _candidate,
             address _winner
         )
@@ -71,6 +73,7 @@ contract GameFactory is Mortal, GameSpacialPort {
         _gamePlayValue = gamePlayValue;
         _endBlock = endBlock;
         _reward = address(this).balance;
+        _players = players;
     }
 
     modifier isGameReady() {
