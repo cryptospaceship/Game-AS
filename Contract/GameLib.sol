@@ -20,6 +20,8 @@ library GameLib {
         HANGAR,
         WOPR
     }
+
+
     /**
         WOPR: Cambiar cannon por WOPR
      */
@@ -324,7 +326,7 @@ library GameLib {
         (aRemain, dRemain) = portCombatCalcInternal(attacker[0],attacker[1],dPoints,dSize);
     }
 
-    function shipCombatCalc(uint[5] attacker, uint[3] defender, uint distance)
+    function shipCombatCalc(uint[5] attacker, uint[3] defender, uint distance, bool battle)
         external
         view
         returns(bool combat, uint aRemain,uint dRemain, uint lock)  
@@ -345,8 +347,10 @@ library GameLib {
             dRemain = 0;
             return;
         }
-
-        (aRemain,dRemain) = shipCombatCalcInternal(attacker[0],attacker[1],attacker[3],defender[0],defender[1],defender[2]);
+        if (battle)
+            (aRemain,dRemain) = shipCombatCalcBattle(attacker[0],attacker[1],attacker[3],defender[0],defender[1],defender[2]);
+        else
+            (aRemain,dRemain) = shipCombatCalcSkirmish(attacker[0],attacker[1],attacker[3],defender[0],defender[1],defender[2]);
     }
     
     function getFleetEndProduction(uint size, uint hangarLevel, uint[9] rLevel, uint resourceEndUpgrade, uint eConsumption, uint damage, uint gConverter, uint mConverter)
@@ -566,7 +570,7 @@ library GameLib {
         return(10000,10000,10000);
     }
     
-    function checkFleetRange(uint distance, uint fleetRange, uint mode, uint damage, bool battle)
+    function checkFleetRange(uint distance, uint fleetRange, uint mode, uint damage, bool _battle)
         internal
         view
         returns(bool, uint)
@@ -586,7 +590,7 @@ library GameLib {
         }
         if (distanceCanJump >= distance) {
             inRange = true;
-            lock = lockFleet(distance,battle,damage);
+            lock = lockFleet(distance,_battle,damage);
         }
         else
             inRange = false;
@@ -740,7 +744,7 @@ library GameLib {
     }
 
 
-    function shipCombatCalcInternal(uint attack, uint aSize, uint aMode, uint defense, uint dSize, uint dMode)
+    function shipCombatCalcBattle(uint attack, uint aSize, uint aMode, uint defense, uint dSize, uint dMode)
         internal
         pure
         returns(uint a, uint d)
@@ -806,6 +810,42 @@ library GameLib {
         }
     }
 
+
+    function shipCombatCalcSkirmish(uint attack, uint aSize, uint aMode, uint defense, uint dSize, uint dMode)
+        internal
+        pure
+        returns(uint a, uint d)
+    {
+        uint[2] memory aBonus;
+        uint[2] memory dBonus;
+        uint attackerPoints = attack * aSize;
+        uint defenderPoints = defense * dSize;
+        uint s;
+
+        (aBonus[0],aBonus[1]) = getAttackBonusByMode(aMode);
+        (dBonus[0],dBonus[1]) = getDefenseBonusByMode(dMode);
+
+        /*
+         * Siempre pone 1 punto de defensa como minimo.
+         * En la version 1.2 Una flota con ataque 0 ataca a un ship sin puntos de defensa
+         * surge el error de dividir por 0
+         */
+        if (defenderPoints == 0)
+            defenderPoints = 1;
+
+        if (aBonus[0] != 0 && aBonus[1] == 0) {
+            attackerPoints = attackerPoints + (aBonus[0]*attackerPoints/100);
+        }
+        if (aBonus[0] == 0 && aBonus[1] != 0) {
+            attackerPoints = attackerPoints - (aBonus[1]*attackerPoints/100);
+        }
+        if (dBonus[0] != 0 && dBonus[1] == 0) {
+            defenderPoints = defenderPoints + (dBonus[0]*defenderPoints/100);
+        }
+        if (dBonus[0] == 0 && dBonus[1] != 0) {
+            defenderPoints = defenderPoints - (dBonus[1]*defenderPoints/100);
+        }
+
         if (attackerPoints > defenderPoints)
         {
             s = sack(attackerPoints,defenderPoints);
@@ -816,6 +856,7 @@ library GameLib {
             a = s*aSize/100;
             d = (100-s)*dSize/100;
         } 
+    }
 
     function battle(uint w, uint l)
         internal
@@ -839,7 +880,7 @@ library GameLib {
         pure
         returns(uint)
     {
-        uint c = calcBattleInternal(w,l);
+        uint c = battle(w,l);
         return _divRound(100*c,100+c);
     }
 
@@ -965,13 +1006,13 @@ library GameLib {
     }
     
 
-    function lockFleet(uint distance, bool battle, uint damage) 
+    function lockFleet(uint distance, bool _battle, uint damage) 
         internal 
         view 
         returns(uint)
     {
         uint ret;
-        if (!battle) {
+        if (!_battle) {
             ret = (distance * 25);
         }
         else {

@@ -471,7 +471,7 @@ contract GameShipFactory_linked is GameFactory {
         }
     }
 
-    function attackShip(uint _from, uint _to)
+    function attackShip(uint _from, uint _to, bool battle)
         external
         isGameStart
         onlyShipOwner(_from)
@@ -480,7 +480,7 @@ contract GameShipFactory_linked is GameFactory {
         notInPort(_to)
         notInPort(_from)
     {
-        attackShipInternal(_from,_to);
+        attackShipInternal(_from,_to,battle);
     }
 
 
@@ -1278,7 +1278,7 @@ contract GameShipFactory_linked is GameFactory {
     }
         
 
-    function attackShipInternal(uint _from, uint _to)
+    function attackShipInternal(uint _from, uint _to, bool battle)
         internal
     {
         uint aRemain;
@@ -1286,14 +1286,17 @@ contract GameShipFactory_linked is GameFactory {
         uint lock;
         bool combat;
 
-        (combat,aRemain,dRemain,lock) = shipCombat(_from,_to, getShipDistance(_from, _to));
+        (combat,aRemain,dRemain,lock) = shipCombat(_from,_to, getShipDistance(_from, _to), battle);
+
         require(combat);
+
         shipsInGame[_from].lock.fleet = lock;
+
         return attackShipResult(_from,_to,aRemain,dRemain);
     }
 
 
-    function shipCombat(uint _from, uint _to, uint distance)
+    function shipCombat(uint _from, uint _to, uint distance, bool battle)
         internal
         view
         returns(bool, uint, uint, uint)
@@ -1311,7 +1314,8 @@ contract GameShipFactory_linked is GameFactory {
         return GameLib.shipCombatCalc(
             attacker,    // Attacker Points
             defender,
-            distance
+            distance,
+            battle
         );
     }
 
