@@ -780,7 +780,8 @@ library GameLib {
          */
         if (attackerPoints > defenderPoints) 
         {
-            s = 100-(100*defenderPoints/attackerPoints);
+            s = 100-battle(attackerPoints,defenderPoints);
+            //s = 100-(100*defenderPoints/attackerPoints);
             if ( s != 0 ) {
                 a = s*aSize/100;
                 if (a == 0)
@@ -790,7 +791,8 @@ library GameLib {
             }
             d = 0;
         } else {
-            s = 100-(100*attackerPoints/defenderPoints);
+            s = 100-battle(defenderPoints,attackerPoints);
+            //s = 100-(100*attackerPoints/defenderPoints);
             if ( s != 0 ) {
                 a = 0;
                 d = s*dSize/100;
@@ -802,6 +804,43 @@ library GameLib {
                     d = 1;
             }
         }
+    }
+
+        if (attackerPoints > defenderPoints)
+        {
+            s = sack(attackerPoints,defenderPoints);
+            a = (100-s)*aSize/100;
+            d = s*dSize/100;
+        } else {
+            s = sack(defenderPoints,attackerPoints);
+            a = s*aSize/100;
+            d = (100-s)*dSize/100;
+        } 
+
+    function battle(uint w, uint l)
+        internal
+        pure
+        returns (uint)
+    {
+        uint c = _divRound(100*l,w);
+        if ( c <= 25 )
+            return c - _divRound(c,2);
+        if ( c <= 50 )
+            return c - _divRound(c,3);
+        if ( c <= 75 )
+            return c - _divRound(c,4);
+        if ( c < 90 )
+            return c - _divRound(c,8);
+        return c;   
+    }
+
+    function sack(uint w, uint l)
+        internal
+        pure
+        returns(uint)
+    {
+        uint c = calcBattleInternal(w,l);
+        return _divRound(100*c,100+c);
     }
 
     // Mode 0: Default    
