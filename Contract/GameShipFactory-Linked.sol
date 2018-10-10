@@ -1107,6 +1107,10 @@ contract GameShipFactory_linked is GameFactory {
             ship.buildings.endUpgrade = block.number;
         }
 
+        /*
+         * Falta contemplar que pasa con el WOPR 
+         * que tiene como maximo 2 niveles
+         */
         
         if (damage == 100) 
             level = 0;
@@ -1286,7 +1290,12 @@ contract GameShipFactory_linked is GameFactory {
         uint lock;
         bool combat;
 
-        (combat,aRemain,dRemain,lock) = shipCombat(_from,_to, getShipDistance(_from, _to), battle);
+        (combat, aRemain, dRemain, lock) = shipCombat(
+            _from,
+            _to,
+            getShipDistance(_from, _to), 
+            battle
+        );
 
         require(combat);
 
@@ -1926,7 +1935,9 @@ contract GameShipFactory_linked is GameFactory {
         }
     }
 
-
+    /*
+     * Hay que cambiar el indice de los buildings
+     */
     function getBuildingLevelByType( Buildings storage building, uint _type)
         internal
         view
