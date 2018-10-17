@@ -1,8 +1,7 @@
 pragma solidity 0.4.24;
 
 library GameLib {
-
-    enum ResourceIndex {
+/*  enum ResourceIndex {
         INDEX_UPGRADING,
         PANEL_1,
         PANEL_2,
@@ -20,11 +19,16 @@ library GameLib {
         HANGAR,
         WOPR
     }
+    
+    enum QAIM {
+        FLEET_POINTS,
+        RESOURCES_IMPROVE,
+        BUILDINGS_IMPROVE,
+        FLEET_IMPROVE,
+        SHIP_MOVEMMENT_IMPROVE,
+        MODE_IMPROVE
+    } */
 
-
-    /**
-        WOPR: Cambiar cannon por WOPR
-     */
 
     function getConvertionRate(uint resource, uint converterLevel, uint damage)
         external
@@ -70,14 +74,14 @@ library GameLib {
      * @return inRange Booleano para saber si la nave se puede mover
      * @return lock Cantidad de bloques para el proximo movimiento
      */
-    function checkRange(uint distance, uint mode, uint damage)
+    function checkRange(uint distance, uint mode, uint damage, uint qaim)
         external
         view
         returns(bool inRange, uint lock)
     {
         inRange = (distance <= getMovemmentByMode(mode) && distance != 0);
         if (inRange) 
-            lock = lockMovemment(distance,mode,damage);
+            lock = lockMovemment(distance,mode,damage,qaim);
         else
             lock = 0;
     }
@@ -353,7 +357,7 @@ library GameLib {
             (aRemain,dRemain) = shipCombatCalcSkirmish(attacker[0],attacker[1],attacker[3],defender[0],defender[1],defender[2]);
     }
     
-    function getFleetEndProduction(uint size, uint hangarLevel, uint[9] rLevel, uint resourceEndUpgrade, uint eConsumption, uint damage, uint gConverter, uint mConverter)
+    function getFleetEndProduction(uint size, uint hangarLevel, uint[9] rLevel, uint resourceEndUpgrade, uint eConsumption, uint damage, uint gConverter, uint mConverter, uint qaim)
         external
         view
         returns(bool,uint)
@@ -364,6 +368,9 @@ library GameLib {
         ret = batches * (5-hangarLevel) * 80;
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
+        }
+        if (qaim > 0) {
+            ret = ret - _percent(ret,qaim);
         }
         if (resourceEndUpgrade > _block)
             return ((size <= getEnergyProduction(subResourceLevel(rLevel), eConsumption, damage, gConverter+mConverter)),(_block + ret));
@@ -400,7 +407,7 @@ library GameLib {
 
 
 
-    function getFleetCost(uint _attack, uint _defense, uint _distance, uint _load, uint _points)
+    function getFleetCost(uint _attack, uint _defense, uint _distance, uint _load, uint qaim)
         external
         pure
         returns(
@@ -410,17 +417,12 @@ library GameLib {
             uint m
         ) 
     {
-        uint points = _attack + _defense + (_distance * 6) + (_load/80);
-        if ( points <= _points && points != 0) {
-            (e,g,m) = getFleetCostBasic(_attack,_defense,_distance,_load);
-            fleetType = getFleetType(_attack,_defense,_distance,_load);
-        }
-        else {
-            e = 0;
-            g = 0;
-            m = 0;
-            fleetType = 0;
-        }
+
+        (e,g,m) = getFleetCostBasic(_attack,_defense,_distance,_load);
+        fleetType = getFleetType(_attack,_defense,_distance,_load);
+        e = e - _percent(e,qaim);
+        g = g - _percent(g,qaim);
+        m = m - _percent(m,qaim);
     }
 
     function getResourcesToReturn(uint hangarLevel) 
@@ -462,7 +464,7 @@ library GameLib {
         m = m * _size;
     }
 
-    function lockChangeMode(uint damage) 
+    function lockChangeMode(uint damage, uint qaim) 
         external
         view 
         returns(uint)
@@ -471,6 +473,9 @@ library GameLib {
         ret = 280;
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
+        }
+        if (qaim > 0) {
+            ret = ret - _percent(ret,2*qaim);
         }
         return block.number + ret;
     }
@@ -484,7 +489,7 @@ library GameLib {
         return warehouseStorage[level];
     }
     
-    function getUpgradeBuildingCost(uint _type, uint _level, uint damage) 
+    function getUpgradeBuildingCost(uint _type, uint _level, uint damage, uint qaim) 
         external 
         view 
         returns(uint energy, uint graphene, uint metal, uint lock)
@@ -510,10 +515,14 @@ library GameLib {
             graphene = buildingCost[_level];
             metal = buildingCost[_level];
         }
-        lock = lockUpgradeBuilding(_level,damage);
+        energy = energy - _percent(energy,qaim);
+        graphene = graphene - _percent(graphene,qaim);
+        metal = metal - _percent(metal,qaim);
+
+        lock = lockUpgradeBuilding(_level,damage,qaim);
     }
     
-    function getUpgradeResourceCost(uint _type, uint _level, uint damage) 
+    function getUpgradeResourceCost(uint _type, uint _level, uint damage, uint qaim) 
         external
         view
         returns(uint energy, uint graphene, uint metal, uint lock)
@@ -550,7 +559,12 @@ library GameLib {
             graphene = resourceCost[_level];
             metal = resourceCost[_level]/2;
         }
-        lock = lockUpgradeResource(_level,damage);
+
+        energy = energy - _percent(energy,qaim);
+        graphene = graphene - _percent(graphene,qaim);
+        metal = metal - _percent(metal,qaim);
+
+        lock = lockUpgradeResource(_level, damage, qaim);
     
     }
 
@@ -743,6 +757,14 @@ library GameLib {
         return d;
     }
 
+    function _percent(uint n, uint p)
+        internal
+        pure
+        returns(uint)
+    {
+        return p*n/100;
+    }
+
 
     function shipCombatCalcBattle(uint attack, uint aSize, uint aMode, uint defense, uint dSize, uint dMode)
         internal
@@ -931,7 +953,7 @@ library GameLib {
         else return(0,0);
     }
 
-    function lockUpgradeResource(uint level, uint damage) 
+    function lockUpgradeResource(uint level, uint damage, uint qaim) 
         internal
         view 
         returns(uint)
@@ -941,10 +963,13 @@ library GameLib {
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
         }
+        if (qaim > 0) {
+            ret = ret - _percent(ret,qaim);
+        }
         return block.number + ret;
     }
     
-    function lockUpgradeBuilding(uint level, uint damage)
+    function lockUpgradeBuilding(uint level, uint damage, uint qaim)
         internal
         view 
         returns(uint)
@@ -953,6 +978,9 @@ library GameLib {
         ret = level * 400;
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
+        }
+        if (qaim > 0) {
+            ret = ret - _percent(ret,qaim);
         }
         return block.number + ret;
     }
@@ -991,7 +1019,7 @@ library GameLib {
         return block.number + ret;
     }
 
-    function lockMovemment(uint distance, uint mode, uint damage)
+    function lockMovemment(uint distance, uint mode, uint damage, uint qaim)
         internal
         view
         returns(uint)
@@ -1001,6 +1029,9 @@ library GameLib {
         ret = (distance*400/movemmentPerMode[mode]);
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
+        }
+        if (qaim > 0) {
+            ret = ret - _percent(ret,2*qaim);
         }
         return block.number + ret;
     }

@@ -4,18 +4,8 @@ import "./Ownable.sol";
 
 contract GameShipMap is Ownable {
     uint[64][64]    gameMap;
-    uint            size = 4096;
-    uint            sideSize = 64;
-    
-    modifier validPosition(uint x,uint y) {
-        require(x < sideSize && y < sideSize);
-        _;
-    }
-	
-    modifier empty(uint x,uint y) {
-        require(gameMap[x][y] == 0);
-        _;
-    }
+    uint            size;
+    uint            sideSize;
     
    /*
     * @title Get in Position
@@ -125,10 +115,10 @@ contract GameShipMap is Ownable {
     */
     function setInMapPosition(uint _id, uint x, uint y)
 	    internal 
-	    validPosition(x,y) 
-	    empty(x,y) 
 	    returns(uint,uint)
     {
+        require(x < sideSize && y < sideSize && gameMap[x][y] == 0);
+
         gameMap[x][y] = _id;    
         return (x,y);
     }
@@ -163,7 +153,6 @@ contract GameShipMap is Ownable {
     {
         uint8[11] memory resources = [0,45,15,12,9,7,5,4,1,1,1];
         uint n = uint256(keccak256(x,y)) % size;
-        //uint n = keccak256(x,y);
         uint i;
         uint top;
         uint botton;
@@ -179,6 +168,6 @@ contract GameShipMap is Ownable {
             else
                 top = botton;
         }
-        return 0;
+        return 1;
     }
 }

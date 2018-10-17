@@ -21,25 +21,6 @@ contract GameFactory is Mortal, GameSpacialPort {
 
     using AddressUtils for address;
 
-    modifier onlyOwnerOrAdmin() {
-        require(msg.sender == owner || msg.sender == admin);
-        _;
-    }
-
-    function setAdmin(address _admin)
-        external
-        onlyOwner
-    {
-        admin = _admin;
-    }
-
-    function delAdmin()
-        external
-        onlyOwner
-    {
-        admin = address(0);
-    }
-
 
     function getGame()
         external
@@ -51,6 +32,7 @@ contract GameFactory is Mortal, GameSpacialPort {
         reward = address(this).balance;
         playvalue = gamePlayValue;
     }
+
 
     function getGame2() 
         external
@@ -99,7 +81,6 @@ contract GameFactory is Mortal, GameSpacialPort {
     function claimVictory()
         external
         isGameReady
-
     {
         require(candidate != address(0) && endBlock <= block.number && endBlock != 0);
         winner = candidate;
@@ -114,22 +95,9 @@ contract GameFactory is Mortal, GameSpacialPort {
     }
 
 
-    function setGameAttributes(address _shipContract, uint _startAt)
-        external
-        onlyOwnerOrAdmin
-    {
-        setSpaceShipContract(_shipContract);
-        if (_startAt == 0)
-            gameLaunch = block.number;
-        else
-            gameLaunch = _startAt;
-        gameReady = true;
-        gamePlayValue = 0.1 ether;
-    }
-
     function setGameAttributes(address _shipContract, uint _startAt, uint mapSideSize)
         external
-        onlyOwnerOrAdmin
+        onlyOwner
     {
         setSpaceShipContract(_shipContract);
         if (_startAt == 0)
@@ -137,9 +105,8 @@ contract GameFactory is Mortal, GameSpacialPort {
         else
             gameLaunch = _startAt;
 
-        /*
-         * Se le cambia el tamaño al mapa
-         */
+        require(mapSideSize <= 64);
+
         changeMapSize(mapSideSize);
         
         gameReady = true;

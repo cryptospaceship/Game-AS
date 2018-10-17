@@ -1,9 +1,8 @@
 pragma solidity 0.4.24;
 
-import "./GameSpacialPort.sol";
 import "./GameLib.sol";
+import "./GameSpacialPort.sol";
 import "./GameFactory.sol";
-import "./UtilsLib.sol";
 
 
 contract GameEvents {
@@ -119,6 +118,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         uint x;
         uint y;
         uint[3] resourceDensity;
+        uint[6] qaim;
         uint mode;
         uint lastHarvest;
         Fleet fleet;
@@ -205,7 +205,6 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
 
     /*
      * Esta funcion es solamente durante la etapa de desarrollo
-     */
     function adminSetShipVars(uint _ship, uint x, uint y, uint[9] rLevel, uint[4] bLevel, uint[3] stock)
         external
         onlyOwnerOrAdmin
@@ -227,8 +226,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         ship.warehouse.graphene = stock[1];
         ship.warehouse.metal = stock[2];
     }
-
-
+    */
 
     function unplaceShip(uint _ship)
         external
@@ -411,7 +409,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
 
 
     function repairShipInternal(uint _from, uint _to, uint units)
-        internal
+        private
     {
         GameSpaceShip storage from = shipsInGame[_from];
         GameSpaceShip storage to = shipsInGame[_to];
@@ -439,7 +437,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
 
 
     function convertResourceInternal(uint _ship, uint src, uint dst, uint n)
-        internal
+        private
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
         uint conv;
@@ -580,7 +578,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function sendResourcesInternal(uint _from, uint _to, uint energy, uint graphene, uint metal)
-        internal
+        private
     {
         GameSpaceShip storage to = shipsInGame[_to];
         GameSpaceShip storage from = shipsInGame[_from];
@@ -613,11 +611,28 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         onlyShipOwner(_ship)
         onlyWithHangar(_ship)
     {
+        designFleetInternal(_ship,_attack,_defense,_distance,_load);
+    }
+
+    function designFleetInternal(uint _ship, uint _attack, uint _defense, uint _distance, uint _load)
+        private
+    {
         require(canDesignFleet(_ship));
-        require(GameLib.validFleetDesign(_attack,_defense,_distance,_load,getHangarLevel(_ship),0));
+
+        require(
+            GameLib.validFleetDesign(
+                _attack,
+                _defense,
+                _distance,
+                _load,
+                getHangarLevel(_ship),
+                getQAIM(_ship,0)
+            )
+        );
 
         setFleetDesign(_ship,_attack,_defense,_distance,_load);
     }
+
 
     function buildFleet(uint _ship, uint size)
         external
@@ -626,11 +641,23 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         onlyWithHangar(_ship)
         onlyIfCanBuildFleet(_ship)
     {
+        buildFleetInternal(_ship,size);
+    }
+
+    function buildFleetInternal(uint _ship, uint size)
+        private
+    {
         uint e;
         uint g;
         uint m;
         FleetConfig storage fleet = shipsInGame[_ship].fleet.fleetConfig;
-        (,e,g,m) = GameLib.getFleetCost(fleet.attack,fleet.defense,fleet.distance,fleet.load,100);   
+        (,e,g,m) = GameLib.getFleetCost(
+            fleet.attack,
+            fleet.defense,
+            fleet.distance,
+            fleet.load,
+            getQAIM(_ship,3)
+        );   
         collectResourcesAndSub(_ship,e*size,g*size,m*size);
         addFleet(_ship,size);
     }
@@ -643,6 +670,12 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         movemmentUnlocked(_ship)
         validMoveMode(_ship)
     {
+        moveToInternal(_ship,x,y);
+    }
+
+    function moveToInternal(uint _ship, uint x, uint y)
+        private
+    {
         GameSpaceShip storage ship = shipsInGame[_ship];
         bool inRange;
         uint lock;
@@ -650,7 +683,8 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         (inRange, lock) = GameLib.checkRange(
             getDistanceTo(_ship,x,y), 
             ship.mode, 
-            ship.damage
+            ship.damage,
+            getQAIM(_ship,4)
         );
     
         require(inRange);
@@ -683,6 +717,13 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         movemmentUnlocked(_ship)
         validMoveMode(_ship)
     {
+        landToInternal(_ship,x,y,defense);
+    }
+
+
+    function landToInternal(uint _ship, uint x, uint y, bool defense)
+        private
+    {
         GameSpaceShip storage ship = shipsInGame[_ship];
         bool inRange;
         uint lock;
@@ -692,7 +733,12 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
             unsetShipInDefense(_ship);
             ship.isPortDefender = false;
         } else {
-            (inRange,lock) = GameLib.checkRange(getPortDistance(_ship),ship.mode, ship.damage);
+            (inRange,lock) = GameLib.checkRange(
+                getPortDistance(_ship),
+                ship.mode,
+                ship.damage,
+                getQAIM(_ship, 4)
+            );
             require(inRange);
 
             ship.lock.move = lock;
@@ -722,13 +768,16 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         changeModeUnlocked(_ship)
         validMode(_mode)
     {
-        shipsInGame[_ship].lock.mode = GameLib.lockChangeMode(shipsInGame[_ship].damage);
+        shipsInGame[_ship].lock.mode = GameLib.lockChangeMode(
+            shipsInGame[_ship].damage,
+            getQAIM(_ship,5)
+        );
         collectResourcesAndSub(_ship,2000,0,0);
         shipsInGame[_ship].mode = _mode;
     }
 
     function disableConverter(uint _ship)
-        internal
+        private
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
         ship.resources.gConverter = 0;
@@ -737,7 +786,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function setFleetDesign(uint _ship, uint _attack, uint _defense, uint _distance, uint _load)
-        internal
+        private
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
 
@@ -748,7 +797,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function upgradeBuildingInternal(uint _ship, uint _type, uint _role)
-        internal
+        private
     {
         uint energy;
         uint graphene;
@@ -757,7 +806,12 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         uint level = getBuildingLevelByType(shipsInGame[_ship].buildings, _type) + 1;
         require(validBuildingLevel(_type,level));
 
-        (energy,graphene,metal,end) = GameLib.getUpgradeBuildingCost(_type,level,shipsInGame[_ship].damage);
+        (energy,graphene,metal,end) = GameLib.getUpgradeBuildingCost(
+            _type,
+            level,
+            shipsInGame[_ship].damage,
+            getQAIM(_ship, 2)
+        );
 
         if (_type == 2 && level == 1) {
             require(_role > 0 && _role <= 3);
@@ -770,7 +824,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function validBuildingLevel(uint _type, uint _level)
-        internal
+        private
         pure
         returns(bool)
     {
@@ -781,7 +835,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function upgradeResourceInternal(uint _ship, uint _type, uint _index)
-        internal
+        private
     {
         GameSpaceShip storage s = shipsInGame[_ship];
         uint energy;
@@ -791,7 +845,13 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         uint level = getResourceLevelByType(s.resources, _type, _index) + 1;
         
         require(level <= 10);
-        (energy,graphene,metal,end) = GameLib.getUpgradeResourceCost(_type,level,s.damage);
+
+        (energy,graphene,metal,end) = GameLib.getUpgradeResourceCost(
+            _type,
+            level,
+            s.damage,
+            getQAIM(_ship, 1)
+        );
 
         collectResourcesAndSub(_ship,energy,graphene,metal);
         s.resources.endUpgrade = end;
@@ -989,7 +1049,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getFleetProduction(uint _ship)
-        internal
+        private
         view
         returns
         (
@@ -1014,7 +1074,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getFleetConfig(uint _ship)
-        internal
+        private
         view
         returns
         (
@@ -1032,7 +1092,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getFleetCost(uint _ship)
-        internal
+        private
         view
         returns
         (
@@ -1043,11 +1103,17 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         )
     {
         FleetConfig storage fleet = shipsInGame[_ship].fleet.fleetConfig;
-        (fleetType, energyCost, grapheneCost, metalCost) = GameLib.getFleetCost(fleet.attack,fleet.defense,fleet.distance,fleet.load,100); 
+        (fleetType, energyCost, grapheneCost, metalCost) = GameLib.getFleetCost(
+            fleet.attack,
+            fleet.defense,
+            fleet.distance,
+            fleet.load,
+            getQAIM(_ship,3)
+        ); 
     }
 
     function fireCannonInternal(uint _from, uint _to, uint target)
-        internal
+        private
     {
         GameSpaceShip storage from = shipsInGame[_from];
         /* Listado de Targets
@@ -1089,7 +1155,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function fireCannonInternalNormal(uint _from, uint _to, uint damage)
-        internal
+        private
     {
         GameSpaceShip storage to = shipsInGame[_to];
                     
@@ -1107,7 +1173,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function fireCannonInternalAccuracy(uint _from, uint _to, uint target, uint damage)
-        internal
+        private
     {
         GameSpaceShip storage to = shipsInGame[_to];
         uint preLevel;
@@ -1138,7 +1204,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
 
 
     function destroyResources(uint _ship, uint _type, uint _index, uint damage) 
-        internal
+        private
         returns(uint preLevel, uint level)
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
@@ -1147,8 +1213,8 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         preLevel = level;
 
         if (_type == 0 && ship.resources.level[0] == _index + 1 || 
-            _type == 1 && ship.resources.level[0] == uint(GameLib.ResourceIndex.GRAPHENE) || 
-            _type == 2 && ship.resources.level[0] == uint(GameLib.ResourceIndex.METAL) ) {
+           (_type == 1 && ship.resources.level[0] == 7) || 
+           (_type == 2 && ship.resources.level[0] == 8) ) {
             ship.resources.level[0] = 0;
             ship.resources.endUpgrade = block.number;
         } 
@@ -1173,7 +1239,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
 
 
     function destroyBuildings(uint _ship, uint _type, uint damage) 
-        internal
+        private
         returns(uint preLevel, uint level)
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
@@ -1182,9 +1248,9 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         level = getBuildingLevelByType(ship.buildings, _type);
         preLevel = level;
 
-        if (_type == 0 && ship.buildings.level[0] == uint(GameLib.BuildingIndex.WAREHOUSE) || 
-            _type == 1 && ship.buildings.level[0] == uint(GameLib.BuildingIndex.HANGAR) || 
-            _type == 2 && ship.buildings.level[0] == uint(GameLib.BuildingIndex.WOPR)) {
+        if (_type == 0 && ship.buildings.level[0] == 1 || 
+            _type == 1 && ship.buildings.level[0] == 2 || 
+            _type == 2 && ship.buildings.level[0] == 3) {
 
             ship.buildings.level[0] = 0;
             ship.buildings.endUpgrade = block.number; 
@@ -1217,7 +1283,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function attackPortInternal(uint _from)
-        internal
+        private
     {
         uint aRemain;
         uint lock;
@@ -1244,7 +1310,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
 
 
     function attackPortResult(uint _from, uint aRemain, uint[5] dRemain)
-        internal
+        private
     {
         uint aSize;
         uint[5] memory dSize;
@@ -1315,7 +1381,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
 
 
     function portCombat(uint[5] attacker, uint distance)
-        internal
+        private
         view
         returns(bool, uint, uint[5], uint)
     {
@@ -1334,7 +1400,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         
 
     function attackShipInternal(uint _from, uint _to, bool battle)
-        internal
+        private
     {
         uint aRemain;
         uint dRemain;
@@ -1357,7 +1423,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
 
 
     function shipCombat(uint _from, uint _to, uint distance, bool battle)
-        internal
+        private
         view
         returns(bool, uint, uint, uint)
     {
@@ -1380,7 +1446,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function cutToMaxFleet(uint _ship)
-        internal
+        private
     {
         uint energy;
         uint cons;
@@ -1392,7 +1458,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
 
 
     function attackShipResult(uint _from, uint _to, uint aRemain, uint dRemain)
-        internal
+        private
     {
         uint e;
         uint g;
@@ -1418,16 +1484,8 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
 
-    function _setWarehouse(Warehouse storage w, uint e, uint g, uint m)
-        internal
-    {
-        w.energy = e;
-        w.graphene = g;
-        w.metal = m;
-    }
-
     function _addWarehouse(Warehouse storage w, uint e, uint g, uint m, uint level)
-        internal 
+        private 
     {
         uint load = GameLib.getWarehouseLoadByLevel(level);
         if (w.energy + e > load)
@@ -1447,7 +1505,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
     
     function _subWarehouse (Warehouse storage w, uint e, uint g, uint m) 
-        internal 
+        private 
     {
         require(w.energy >= e && w.graphene >= g && w.metal >= m);
         w.energy -= e;
@@ -1459,7 +1517,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     
 
     function destroyShip(uint _ship)
-        internal
+        private
     {
         address owner = shipsInGame[_ship].owner;
         playing[owner] = false;
@@ -1472,7 +1530,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function toSack(uint _ship, uint load) 
-        internal
+        private
         returns(uint e, uint g, uint m)
     {
         uint energy;
@@ -1497,7 +1555,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function collectResourcesAndSub(uint _ship, uint e, uint g, uint m)
-        internal
+        private
     {
         GameSpaceShip storage s = shipsInGame[_ship];
         uint energy;
@@ -1513,12 +1571,15 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         energy -= e;
         graphene -= g;
         metal -= m;
-        _setWarehouse(s.warehouse,energy,graphene,metal);
+        s.warehouse.energy = energy;
+        s.warehouse.graphene = graphene;
+        s.warehouse.metal = metal;
+
     }
 
 
     function addFleet(uint _ship, uint size)
-        internal
+        private
     {
         bool build;
         uint end;
@@ -1531,7 +1592,8 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
             getFleetConsumption(_ship),
             shipsInGame[_ship].damage,
             shipsInGame[_ship].resources.gConverter,
-            shipsInGame[_ship].resources.mConverter
+            shipsInGame[_ship].resources.mConverter,
+            getQAIM(_ship, 3)
         );
 
         require(build);
@@ -1539,7 +1601,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function addFleetToProduction(uint _ship, uint size, uint end)
-        internal
+        private
     {
         Fleet storage a = shipsInGame[_ship].fleet;
         if (a.fleetInProduction > 0)
@@ -1550,7 +1612,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function killFleet(uint _ship, uint size)
-        internal
+        private
     {
         Fleet storage a = shipsInGame[_ship].fleet;
         uint left;
@@ -1572,7 +1634,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getResources(uint _ship)
-        internal
+        private
         view
         returns(uint energy, uint graphene, uint metal)    
     {
@@ -1592,7 +1654,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getWarehouseLoad(uint _ship)
-        internal
+        private
         view
         returns(uint load)
     {
@@ -1600,7 +1662,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getUnharvestResources(uint _ship)
-        internal
+        private
         view
         returns(uint energy, uint graphene, uint metal)
     {
@@ -1629,7 +1691,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getProductionPerBlock(uint _ship, bool withFleet)
-        internal
+        private
         view
         returns(uint energy, uint graphene, uint metal)
     {
@@ -1667,7 +1729,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getShipPosition(uint _ship)
-        internal
+        private
         view
         returns(uint[2])
     {
@@ -1676,32 +1738,39 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getShipDistance(uint _from, uint _to)
-        internal
+        private
         view
         returns(uint)
     {
-        return Utils.getDistance(getShipPosition(_from),getShipPosition(_to));
+        return getDistance(getShipPosition(_from),getShipPosition(_to));
     }
 
     function getPortDistance(uint _from)
-        internal
+        private
         view
         returns(uint)
     {
-        return Utils.getDistance(getShipPosition(_from),[spacialPort.x,spacialPort.y]);   
+        return getDistance(getShipPosition(_from),[spacialPort.x,spacialPort.y]);   
     }
 
     function getDistanceTo(uint _from, uint x, uint y)
-        internal
+        private
         view
         returns(uint)
     {
-        return Utils.getDistance(getShipPosition(_from),[x,y]);
+        return getDistance(getShipPosition(_from),[x,y]);
     }
 
+    function getQAIM(uint _ship, uint qaim)
+        private
+        view
+        returns(uint)
+    {
+        return shipsInGame[_ship].qaim[qaim];
+    }
 
     function getFleetConsumption(uint _ship)
-        internal
+        private
         view
         returns(uint)
     {
@@ -1710,7 +1779,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getFleetRange(uint _ship)
-        internal
+        private
         view
         returns(uint)
     {
@@ -1720,7 +1789,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
 
 
     function getFleetSize(uint _ship)
-        internal
+        private
         view
         returns(uint)
     {
@@ -1731,7 +1800,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getFleetLoad(uint _ship)
-        internal
+        private
         view
         returns(uint)
     {
@@ -1740,7 +1809,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function setFleetSize(uint _ship, uint size)
-        internal
+        private
     {
         Fleet storage a = shipsInGame[_ship].fleet;
         if (a.fleetEndProduction <= block.number && a.fleetInProduction > 0)
@@ -1749,7 +1818,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getFleetAttack(uint _ship)
-        internal
+        private
         view
         returns(uint, uint)
     {
@@ -1758,7 +1827,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getPortDefend()
-        internal
+        private
         view
         returns(uint[5] dPoints, uint[5] dSize)
     {
@@ -1776,7 +1845,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
 
 
     function getFleetDefend(uint _ship)
-        internal
+        private
         view
         returns(uint, uint)
     {
@@ -1785,7 +1854,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function canDesignFleet(uint _ship) 
-        internal
+        private
         view
         returns(bool)
     {
@@ -1797,7 +1866,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function canBuildFleet(uint _ship)
-        internal
+        private
         view
         returns(bool)
     {
@@ -1806,7 +1875,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function fleetConfigured(uint _ship)
-        internal
+        private
         view
         returns(bool)
     {
@@ -1815,7 +1884,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getResourceLevel (Resources storage resource) 
-        internal 
+        private 
         view 
         returns(uint[6] e, uint g, uint m) 
     {
@@ -1823,45 +1892,44 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         for ( i = 0; i < 6; i++ ) 
             e[i] = resource.level[i+1];
             
-        g = resource.level[uint(GameLib.ResourceIndex.GRAPHENE)];
-        m = resource.level[uint(GameLib.ResourceIndex.METAL)];
+        g = resource.level[7];
+        m = resource.level[8];
 
         if (block.number < resource.endUpgrade) {
-            i = resource.level[uint(GameLib.ResourceIndex.INDEX_UPGRADING)];
-            if ( i == uint(GameLib.ResourceIndex.GRAPHENE) ) {
+            i = resource.level[0];
+            if ( i == 7 ) {
                 g--;
                 return;
             }
-            if ( i == uint(GameLib.ResourceIndex.METAL) ) {
+            if ( i == 8 ) {
                 m--;
                 return;
             }
             e[i-1]--;
         }
-
     }
 
 
 
     function getBuildingLevel (Buildings storage building) 
-        internal 
+        private 
         view 
         returns(uint w, uint h, uint c) 
     {
-        w = building.level[uint(GameLib.BuildingIndex.WAREHOUSE)];
-        h = building.level[uint(GameLib.BuildingIndex.HANGAR)];
-        c = building.level[uint(GameLib.BuildingIndex.WOPR)];
+        w = building.level[1];
+        h = building.level[2];
+        c = building.level[3];
 
         if (block.number < building.endUpgrade) {
-            if (building.level[uint(GameLib.BuildingIndex.INDEX_UPGRADING)] == uint(GameLib.BuildingIndex.WAREHOUSE)) {
+            if (building.level[0] == 1) {
                 w--;
                 return;
             }
-            if (building.level[uint(GameLib.BuildingIndex.INDEX_UPGRADING)] == uint(GameLib.BuildingIndex.HANGAR)) {
+            if (building.level[0] == 2) {
                 h--;
                 return;
             }
-            if (building.level[uint(GameLib.BuildingIndex.INDEX_UPGRADING)] == uint(GameLib.BuildingIndex.WOPR)) {
+            if (building.level[0] == 3) {
                 c--;
                 return;
             }
@@ -1869,7 +1937,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
     
     function getWarehouseLevel(uint _ship)
-        internal
+        private
         view
         returns(uint)
     {
@@ -1877,7 +1945,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getHangarLevel(uint _ship)
-        internal
+        private
         view
         returns(uint)
     {
@@ -1885,7 +1953,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getCannonLevel(uint _ship)
-        internal
+        private
         view
         returns(uint)
     {
@@ -1895,7 +1963,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getConverterLevel(uint _ship)
-        internal
+        private
         view
         returns(uint)
     {
@@ -1905,7 +1973,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getReparerLevel(uint _ship)
-        internal
+        private
         view
         returns(uint)
     {
@@ -1915,7 +1983,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getRole( uint _ship )
-        internal
+        private
         view
         returns(uint)
     {
@@ -1924,7 +1992,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function withReparer(uint _ship)
-        internal
+        private
         view
         returns(bool)
     {
@@ -1932,7 +2000,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function withCannon(uint _ship)
-        internal
+        private
         view
         returns(bool)
     {
@@ -1940,7 +2008,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function withConverter(uint _ship)
-        internal
+        private
         view
         returns(bool)
     {
@@ -1948,7 +2016,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function getResourceLevelByType( Resources storage resource, uint _type, uint _index)
-        internal
+        private
         view
         returns(uint)
     {
@@ -1967,38 +2035,38 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     function addResourceLevel (Resources storage resource, uint _type, uint _index) 
-        internal 
+        private 
     {
         if (_type == 0) {
             resource.level[_index+1]++;
-            resource.level[uint(GameLib.ResourceIndex.INDEX_UPGRADING)] = _index+1;
+            resource.level[0] = _index+1;
             return;
         }
         if (_type == 1) {
-            resource.level[uint(GameLib.ResourceIndex.GRAPHENE)]++; 
-            resource.level[uint(GameLib.ResourceIndex.INDEX_UPGRADING)] = uint(GameLib.ResourceIndex.GRAPHENE);
+            resource.level[7]++; 
+            resource.level[0] = 7;
             return;
         }
         if (_type == 2) { 
-            resource.level[uint(GameLib.ResourceIndex.METAL)]++; 
-            resource.level[uint(GameLib.ResourceIndex.INDEX_UPGRADING)] = uint(GameLib.ResourceIndex.METAL);
+            resource.level[8]++; 
+            resource.level[0] = 8;
             return;
         }
     }
 
     function setResourceLevel (Resources storage resource, uint _type, uint _index, uint level) 
-        internal 
+        private 
     {
         if (_type == 0) {
             resource.level[_index+1] = level;
             return;
         }
         if (_type == 1) {
-            resource.level[uint(GameLib.ResourceIndex.GRAPHENE)] = level; 
+            resource.level[7] = level; 
             return;
         }
         if (_type == 2) { 
-            resource.level[uint(GameLib.ResourceIndex.METAL)] = level; 
+            resource.level[8] = level; 
             return;
         }
     }
@@ -2011,7 +2079,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
      * @return _index en el caso de que sea un panel de 0 a 5
      */
     function targetToStructure(uint target)
-        internal
+        private
         pure
         returns(uint structure, uint _type, uint _index)
     {
@@ -2040,7 +2108,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
      * Hay que cambiar el indice de los buildings
      */
     function getBuildingLevelByType( Buildings storage building, uint _type)
-        internal
+        private
         view
         returns(uint)
     {
@@ -2061,39 +2129,60 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
     
     function addBuildingLevel (Buildings storage building, uint _type)
-        internal 
+        private 
     {
         if (_type == 0) {
-            building.level[uint(GameLib.BuildingIndex.WAREHOUSE)]++;
-            building.level[uint(GameLib.BuildingIndex.INDEX_UPGRADING)] = uint(GameLib.BuildingIndex.WAREHOUSE);
+            building.level[1]++;
+            building.level[0] = 1;
             return;
         }
         if (_type == 1) {
-            building.level[uint(GameLib.BuildingIndex.HANGAR)]++; 
-            building.level[uint(GameLib.BuildingIndex.INDEX_UPGRADING)] = uint(GameLib.BuildingIndex.HANGAR);
+            building.level[2]++; 
+            building.level[0] = 2;
             return;
         }
         if (_type == 2) { 
-            building.level[uint(GameLib.BuildingIndex.WOPR)]++; 
-            building.level[uint(GameLib.BuildingIndex.INDEX_UPGRADING)] = uint(GameLib.BuildingIndex.WOPR);
+            building.level[3]++; 
+            building.level[0] = 3;
             return;
         }
     }
 
     function setBuildingLevel (Buildings storage building, uint _type, uint level)
-        internal 
+        private 
     {
         if (_type == 0) {
-            building.level[uint(GameLib.BuildingIndex.WAREHOUSE)] = level;
+            building.level[1] = level;
             return;
         }
         if (_type == 1) {
-            building.level[uint(GameLib.BuildingIndex.HANGAR)] = level; 
+            building.level[2] = level; 
             return;
         }
         if (_type == 2) { 
-            building.level[uint(GameLib.BuildingIndex.WOPR)] = level; 
+            building.level[3] = level; 
             return;
         }
     }
+
+    function getDistance(uint[2] a, uint[2] b)
+        internal
+        pure 
+        returns(uint)
+    {
+        uint d = 0;
+        
+        if (a[0] < b[0])
+            d = b[0] - a[0]; 
+        else 
+            d = a[0] - b[0];
+
+        if (a[1] < b[1])
+            d += b[1] - a[1]; 
+        else 
+            d += a[1] - b[1];
+            
+        return d;
+    }
+
 }
