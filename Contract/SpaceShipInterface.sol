@@ -14,6 +14,8 @@ contract SpaceShipInterface {
 
     function throwShip(uint _ship) external returns(bool);
 
+    function getQAIM(uint _ship, uint qaim) external view returns(uint);
+
     function getShip(uint _ship) external view
         returns 
         (

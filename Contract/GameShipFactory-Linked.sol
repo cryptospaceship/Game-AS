@@ -1,4 +1,4 @@
-pragma solidity 0.4.24;
+pragma solidity 0.4.25;
 
 import "./GameLib.sol";
 import "./GameSpacialPort.sol";
@@ -148,14 +148,18 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     uint shipsPlaying;
 
 
-    function placeShip(uint _ship)
+    function placeShip(uint _ship, uint qaim_0, uint qaim_1)
         external
         payable
         isGameReady
     {
         bool inGame;
-        require(!isShipInGame[_ship]);
         GameSpaceShip storage gss = shipsInGame[_ship];
+
+        require(!isShipInGame[_ship]);
+
+        require(qaim_0 < 6 && qaim_1 < 6);
+        
         (gss.shipName,,inGame,gss.owner,,,,,) = spaceShipInterface.getShip(_ship);
         
         require(
@@ -169,6 +173,10 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
          * Init wharehouse Stock
          */
         (gss.warehouse.energy,gss.warehouse.graphene,gss.warehouse.metal) = GameLib.getInitialWarehouse();
+
+
+        gss.qaim[qaim_0] = spaceShipInterface.getQAIM(_ship,qaim_0);
+        gss.qaim[qaim_1] = spaceShipInterface.getQAIM(_ship,qaim_1);
 
         /**
          * Init Ownership
