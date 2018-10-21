@@ -160,6 +160,9 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
 
         require(qaim_0 < 6 && qaim_1 < 6);
         
+        /*
+         * Adaptar GETSHIP
+         */
         (gss.shipName,,inGame,gss.owner,,,,,) = spaceShipInterface.getShip(_ship);
         
         require(

@@ -18,23 +18,9 @@ contract GameFactory is Mortal, GameSpacialPort {
     uint endBlock;
     uint players;
 
-
     using AddressUtils for address;
 
-
-    function getGame()
-        external
-        view
-        returns(string name, uint launch, uint reward, uint playvalue)
-    {
-        name = "Juego";
-        launch = gameLaunch;
-        reward = address(this).balance;
-        playvalue = gamePlayValue;
-    }
-
-
-    function getGame2() 
+    function getGame() 
         external
         view
         returns(
