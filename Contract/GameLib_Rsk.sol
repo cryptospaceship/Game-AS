@@ -365,7 +365,7 @@ library GameLib {
         uint _block = block.number;
         uint batches = (size/48) + 1;
         uint ret;
-        ret = batches * (5-hangarLevel) * 80;
+        ret = batches * (5-hangarLevel) * 8;
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
         }
@@ -444,9 +444,9 @@ library GameLib {
             uint m
         )
     {
-        e = (2*_attack) + (2 * _defense) + (2*(_distance*6)) + (2*(_load/80));
-        g = (7*_defense) + (7*(_distance*6)) + (5*_attack) + (3*(_load/80));
-        m = (7*_attack) + (7*(_load/80)) + (5*_defense) + (3*(_distance*6));
+        e = (2*_attack) + (2 * _defense) + (2*(_distance*6)) + (2*(_load/8));
+        g = (7*_defense) + (7*(_distance*6)) + (5*_attack) + (3*(_load/8));
+        m = (7*_attack) + (7*(_load/8)) + (5*_defense) + (3*(_distance*6));
     }
 
     function getFleetValue(uint _attack, uint _defense, uint _distance, uint _load, uint _size)
@@ -619,7 +619,7 @@ library GameLib {
         returns(uint fleetType)
     {
         uint _d = _distance * 6;
-        uint _l = _load/80;
+        uint _l = _load/8;
         if ( _attack > _defense && _attack > _d && _attack > _l ) {
             fleetType = 1;
         }
