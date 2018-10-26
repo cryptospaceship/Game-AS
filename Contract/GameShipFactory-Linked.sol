@@ -4,9 +4,7 @@ import "./GameLib.sol";
 import "./GameSpacialPort.sol";
 import "./GameFactory.sol";
 
-
 contract GameEvents {
-    
     event AttackShipEvent(
         uint _from,
         uint _to,
@@ -161,9 +159,18 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         require(qaim_0 < 6 && qaim_1 < 6);
         
         /*
-         * Adaptar GETSHIP
-         */
-        (gss.shipName,,inGame,gss.owner,,,,,) = spaceShipInterface.getShip(_ship);
+          0  address owner,
+          1  string name,
+          2  uint color,
+          3  uint gen,
+          4  uint points,
+          5  uint level,
+          6  uint plays,
+          7  uint wins,
+          8  uint launch,
+          9  bool inGame
+        */
+        (gss.owner,gss.shipName,,,,,,,,inGame) = spaceShipInterface.getShip(_ship);
         
         require(
             inGame == false &&
