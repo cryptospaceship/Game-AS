@@ -786,11 +786,15 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         changeModeUnlocked(_ship)
         validMode(_mode)
     {
-        shipsInGame[_ship].lock.mode = GameLib.lockChangeMode(
+        uint lock;
+        uint cost;
+
+        (lock, cost) = GameLib.changeMode(
             shipsInGame[_ship].damage,
             getQAIM(_ship,5)
         );
-        collectResourcesAndSub(_ship,2000,0,0);
+        shipsInGame[_ship].lock.mode = lock;
+        collectResourcesAndSub(_ship,cost,0,0);
         shipsInGame[_ship].mode = _mode;
     }
 

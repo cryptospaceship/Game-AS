@@ -1,5 +1,12 @@
 pragma solidity 0.4.25;
 
+//import ".fisics/rsk.sol";
+import ".fisics/kovan.sol";
+//import ".fisics/rskTestnet.sol";
+//import ".fisics/ethereum.sol";
+//import ".fisics/poa.sol";
+
+
 library GameLib {
 /*  enum ResourceIndex {
         INDEX_UPGRADING,
@@ -28,6 +35,7 @@ library GameLib {
         SHIP_MOVEMMENT_IMPROVE,
         MODE_IMPROVE
     } */
+
 
 
     function getConvertionRate(uint resource, uint converterLevel, uint damage)
@@ -64,6 +72,18 @@ library GameLib {
             metal = metal / 2;
         }
     }
+
+    /**
+     */
+
+    function changeMode(uint damage, uint qaim)
+        external
+        view
+        returns(uint, uint)
+    {
+        return(lockChangeMode(damage,qaim),bFisics.val(2000));
+    }
+
 
     /**
      * @dev checkRange(): Comprueba si la nave principal se puede mover determinada
@@ -118,7 +138,7 @@ library GameLib {
             if (inRange) {
                 damage = getCannonDamage(level,distance,true,isOtherReparer);
                 cost = getFireCannonCost(true);
-                lock = 400; // Esto no me gusta
+                lock = bFisics.val(400); // Esto no me gusta
                 if (shipDamage > 0) {
                     lock = ((100 + shipDamage) * lock) / 100;
                 }
@@ -129,7 +149,7 @@ library GameLib {
             if (inRange) {
                 damage = getCannonDamage(level,distance,false,isOtherReparer);
                 cost = getFireCannonCost(false);
-                lock = 300; // Esto no me gusta
+                lock = bFisics.val(300); // Esto no me gusta
                 if (shipDamage > 0) {
                     lock = ((100 + shipDamage) * lock) / 100;
                 }
@@ -365,7 +385,7 @@ library GameLib {
         uint _block = block.number;
         uint batches = (size/48) + 1;
         uint ret;
-        ret = batches * (5-hangarLevel) * 80;
+        ret = batches * (5-hangarLevel) * bFisics.val(80);
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
         }
@@ -444,9 +464,9 @@ library GameLib {
             uint m
         )
     {
-        e = (20*_attack) + (20 * _defense) + (20*(_distance*6)) + (20*(_load/80));
-        g = (70*_defense) + (70*(_distance*6)) + (50*_attack) + (30*(_load/80));
-        m = (70*_attack) + (70*(_load/80)) + (50*_defense) + (30*(_distance*6));
+        e = bFisics.val(20) * (_attack + _defense + (_distance*6) + (_load/bFisics.val(80)));
+        g = bFisics.val(70) * (_defense + (_distance*6)) + (bFisics.val(50)*_attack) + (bFisics.val(30)*(_load/bFisics.val(80)));
+        m = bFisics.val(70) * (_attack + (_load/bFisics.val(80))) + (bFisics.val(50)*_defense) + (bFisics.val(30)*(_distance*6));
     }
 
     function getFleetValue(uint _attack, uint _defense, uint _distance, uint _load, uint _size)
@@ -464,21 +484,6 @@ library GameLib {
         m = m * _size;
     }
 
-    function lockChangeMode(uint damage, uint qaim) 
-        external
-        view 
-        returns(uint)
-    {
-        uint ret;
-        ret = 280;
-        if (damage > 0) {
-            ret = ((100 + damage) * ret) / 100;
-        }
-        if (qaim > 0) {
-            ret = ret - _percent(ret,2*qaim);
-        }
-        return block.number + ret;
-    }
 
     function getWarehouseLoadByLevel(uint level)
         external
@@ -486,7 +491,7 @@ library GameLib {
         returns(uint)
     {
         uint24[5] memory warehouseStorage = [10000, 50000, 150000, 1300000, 16000000];
-        return warehouseStorage[level];
+        return bFisics.val(warehouseStorage[level]);
     }
     
     function getUpgradeBuildingCost(uint _type, uint _level, uint damage, uint qaim) 
@@ -507,13 +512,13 @@ library GameLib {
             WOPR: _type == 2 ahora es el WOPR y habria que multiplicar por 4 y utilizar 3 y 4
          */
         if (_type == 2) { 
-            energy = buildingCost[_level+2]*4;
-            graphene = buildingCost[_level+2]*4;
-            metal = buildingCost[_level+2]*4;
+            energy = bFisics.val(buildingCost[_level+2]*4);
+            graphene = bFisics.val(buildingCost[_level+2]*4);
+            metal = bFisics.val(buildingCost[_level+2]*4);
         } else {
-            energy = buildingCost[_level];
-            graphene = buildingCost[_level];
-            metal = buildingCost[_level];
+            energy = bFisics.val(buildingCost[_level]);
+            graphene = bFisics.val(buildingCost[_level]);
+            metal = bFisics.val(buildingCost[_level]);
         }
         energy = energy - _percent(energy,qaim);
         graphene = graphene - _percent(graphene,qaim);
@@ -547,17 +552,17 @@ library GameLib {
             6806350 Level 12 <- Nuevos Niveles - Solo Energia
         */
         if (_type == 0) {
-            energy = resourceCost[_level];
-            graphene = resourceCost[_level]*2;
-            metal = resourceCost[_level]*2;
+            energy = bFisics.val(resourceCost[_level]);
+            graphene = bFisics.val(resourceCost[_level]*2);
+            metal = bFisics.val(resourceCost[_level]*2);
         } else if (_type == 1) {
-            energy = resourceCost[_level];
-            graphene = resourceCost[_level]/2;
-            metal = resourceCost[_level];
+            energy = bFisics.val(resourceCost[_level]);
+            graphene = bFisics.val(resourceCost[_level]/2);
+            metal = bFisics.val(resourceCost[_level]);
         } else if (_type == 2) {
-            energy = resourceCost[_level];
-            graphene = resourceCost[_level];
-            metal = resourceCost[_level]/2;
+            energy = bFisics.val(resourceCost[_level]);
+            graphene = bFisics.val(resourceCost[_level]);
+            metal = bFisics.val(resourceCost[_level]/2);
         }
 
         energy = energy - _percent(energy,qaim);
@@ -573,7 +578,7 @@ library GameLib {
         pure
         returns(uint)
     {
-        return 20000;
+        return bFisics.val(20000);
     }
 
     function getInitialWarehouse()
@@ -581,7 +586,8 @@ library GameLib {
         pure 
         returns(uint, uint, uint)
     {
-        return(10000,10000,10000);
+        uint s = bFisics.val(10000);
+        return(s,s,s);
     }
     
     function checkFleetRange(uint distance, uint fleetRange, uint mode, uint damage, bool _battle)
@@ -619,7 +625,7 @@ library GameLib {
         returns(uint fleetType)
     {
         uint _d = _distance * 6;
-        uint _l = _load/80;
+        uint _l = _load/bFisics.val(80);
         if ( _attack > _defense && _attack > _d && _attack > _l ) {
             fleetType = 1;
         }
@@ -682,8 +688,8 @@ library GameLib {
         returns (uint)
     {
         if (accuracy)
-            return 3000000;
-        return 2000000;
+            return bFisics.val(3000000);
+        return bFisics.val(2000000);
     }
 
     function getRepairCost(uint units)
@@ -691,9 +697,9 @@ library GameLib {
         pure
         returns(uint energy, uint graphene, uint metal)
     {
-        energy = 100000 * units;
-        graphene = 200000 * units;
-        metal = 200000 * units;
+        energy = bFisics.val(100000) * units;
+        graphene = bFisics.val(200000) * units;
+        metal = bFisics.val(200000) * units;
     }
 
     function portCombatCalcInternal(uint aPoints, uint aSize, uint[5] dPoints, uint[5] dSize)
@@ -959,7 +965,7 @@ library GameLib {
         returns(uint)
     {
         uint ret;
-        ret = level * 160;
+        ret = level * bFisics.val(160);
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
         }
@@ -975,7 +981,7 @@ library GameLib {
         returns(uint)
     {
         uint ret;
-        ret = level * 400;
+        ret = level * bFisics.val(400);
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
         }
@@ -985,6 +991,22 @@ library GameLib {
         return block.number + ret;
     }
     
+    function lockChangeMode(uint damage, uint qaim) 
+        internal
+        view 
+        returns(uint)
+    {
+        uint ret;
+        ret = bFisics.val(280);
+        if (damage > 0) {
+            ret = ((100 + damage) * ret) / 100;
+        }
+        if (qaim > 0) {
+            ret = ret - _percent(ret,2*qaim);
+        }
+        return block.number + ret;
+    }
+
     function lockRepair(uint level, uint damage)
         internal
         view
@@ -992,9 +1014,9 @@ library GameLib {
     {
         uint ret;
         if (level == 1)
-            ret = 600;
+            ret = bFisics.val(600);
         else
-            ret = 450;
+            ret = bFisics.val(450);
 
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
@@ -1009,9 +1031,9 @@ library GameLib {
     {
         uint ret;
         if (level == 1)
-            ret = 700;
+            ret = bFisics.val(700);
         else
-            ret = 500;
+            ret = bFisics.val(500);
 
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
@@ -1026,7 +1048,7 @@ library GameLib {
     {
         uint8[4] memory movemmentPerMode = [4,6,3,0];
         uint ret;
-        ret = (distance*400/movemmentPerMode[mode]);
+        ret = (distance*bFisics.val(400)/movemmentPerMode[mode]);
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
         }
@@ -1044,10 +1066,10 @@ library GameLib {
     {
         uint ret;
         if (!_battle) {
-            ret = (distance * 25);
+            ret = (distance * bFisics.val(25));
         }
         else {
-            ret = (distance * 100);
+            ret = (distance * bFisics.val(100));
         }
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
