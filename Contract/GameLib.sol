@@ -1,10 +1,10 @@
 pragma solidity 0.4.25;
 
-//import ".fisics/rsk.sol";
-import ".fisics/kovan.sol";
-//import ".fisics/rskTestnet.sol";
-//import ".fisics/ethereum.sol";
-//import ".fisics/poa.sol";
+//import "./fisics/rsk.sol";
+import "./fisics/kovan.sol";
+//import "./fisics/rskTestnet.sol";
+//import "./fisics/ethereum.sol";
+//import "./fisics/poa.sol";
 
 
 library GameLib {

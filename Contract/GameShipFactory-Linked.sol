@@ -53,6 +53,11 @@ contract GameEvents {
         uint _g,
         uint _m
     );
+
+    event WinnerEvent(
+        address winner,
+        uint reward
+    );
 }
 
 
@@ -125,8 +130,11 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         Warehouse warehouse;
         Lock lock;
         uint damage;
+        uint points;
+        uint takedowns;
         bool inPort;
         bool isPortDefender;
+        bool destroyed;
     }
 
 
@@ -146,6 +154,15 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     uint shipsPlaying;
 
 
+    function getShipPoints(uint _ship)
+        public
+        view
+        returns(uint)
+    {
+        GameSpaceShip storage s = shipsInGame[_ship];
+        return s.points + s.takedowns/100;
+    }
+
     function placeShip(uint _ship, uint qaim_0, uint qaim_1)
         external
         payable
@@ -159,25 +176,28 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         require(qaim_0 < 6 && qaim_1 < 6);
         
         /*
-          0  address owner,
-          1  string name,
-          2  uint color,
-          3  uint gen,
-          4  uint points,
-          5  uint level,
-          6  uint plays,
-          7  uint wins,
-          8  uint launch,
-          9  bool inGame
+        0    address owner,
+        1    string name,
+        2    uint color,
+        3    uint gen,
+        4    uint points,
+        5    uint level,
+        6    uint plays,
+        7    uint wins,
+        8    uint launch,
+        9    uint progress,
+        10   uint qaims,
+        11   bool inGame
         */
-        (gss.owner,gss.shipName,,,,,,,,inGame) = spaceShipInterface.getShip(_ship);
+        (gss.owner,gss.shipName,,,,,,,,,,inGame) = spaceShipInterface.getShip(_ship);
         
         require(
             inGame == false &&
             msg.sender == gss.owner && 
-            playing[gss.owner] == false &&
-            spaceShipInterface.setGame(_ship)
+            playing[gss.owner] == false
         );
+        
+        spaceShipInterface.setGame(_ship);
 
         /**
          * Init wharehouse Stock
@@ -220,47 +240,26 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
 
-
-    /*
-     * Esta funcion es solamente durante la etapa de desarrollo
-    function adminSetShipVars(uint _ship, uint x, uint y, uint[9] rLevel, uint[4] bLevel, uint[3] stock)
-        external
-        onlyOwnerOrAdmin
-    {
-        GameSpaceShip storage ship = shipsInGame[_ship];
-        uint b = block.number;
-
-        require(isShipInGame[_ship]);
-
-        unsetInMapPosition(ship.x,ship.y);
-        ship.lastHarvest = b;
-        setInMapPosition(_ship,x,y);
-        ship.x = x;
-        ship.y = y;
-        (ship.resourceDensity[0],ship.resourceDensity[1],ship.resourceDensity[2]) = getResourceDensity(x,y);
-        ship.resources.level = rLevel;
-        ship.buildings.level = bLevel;
-        ship.warehouse.energy = stock[0];
-        ship.warehouse.graphene = stock[1];
-        ship.warehouse.metal = stock[2];
-    }
-    */
-
-    function unplaceShip(uint _ship)
+    function removeShip(uint _ship)
         external
         onlySpaceShipContract
         isGameReady
-        returns(bool)
+        returns(bool, uint)
     {
         address owner = shipsInGame[_ship].owner;
+        uint points = getShipPoints(_ship);
+        bool win = (ownerToShip[winner] == _ship);
+
         require(isShipInGame[_ship]);
+
         unsetInMapPosition(shipsInGame[_ship].x,shipsInGame[_ship].y);
         playing[owner] = false;
         delete(ownerToShip[owner]);
         delete(shipsInGame[_ship]);
         isShipInGame[_ship] = false;
         players = players - 1;
-        return true;
+
+        return (win,points);
     }
 
     /*==============================================================================*
@@ -315,9 +314,11 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
     }
 
     modifier onlyShipOwner(uint _ship) {
-        bool owner = (msg.sender == shipsInGame[_ship].owner);
+        GameSpaceShip storage ship = shipsInGame[_ship];
         require(
-            isShipInGame[_ship] && owner
+            isShipInGame[_ship] &&
+            msg.sender == ship.owner &&
+            !ship.destroyed
         );
         _;
     }
@@ -402,6 +403,22 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         _;
     }
 
+    function claimVictory()
+        external
+        isGameReady
+    {
+        require(candidate != address(0) && endBlock <= block.number && endBlock != 0);
+        winner = candidate;
+        endBlock = 0;
+        gameReady = false;
+
+        emit WinnerEvent(
+            winner,
+            address(this).balance
+        );
+        shipsInGame[ownerToShip[winner]].points += 500;
+        candidate.transfer(address(this).balance);
+    }
 
     function repairShip(uint _from, uint _to, uint units)
         external
@@ -451,6 +468,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         collectResourcesAndSub(_from,energy,graphene,metal);
         to.damage = to.damage + units;
         from.lock.wopr = lock;
+        from.points++;
     }
 
 
@@ -836,13 +854,16 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         );
 
         if (_type == 2 && level == 1) {
-            require(_role > 0 && _role <= 3);
+            require(_role > 0 && _role <= 3 && shipsInGame[_ship].buildings.role == 0);
             shipsInGame[_ship].buildings.role = _role;
+            if (_role == 3)
+                shipsInGame[_ship].points = shipsInGame[_ship].points + 25;
         }
 
         collectResourcesAndSub(_ship,energy,graphene,metal);
         shipsInGame[_ship].buildings.endUpgrade = end;
         addBuildingLevel(shipsInGame[_ship].buildings,_type);
+        shipsInGame[_ship].points++;
     }
 
     function validBuildingLevel(uint _type, uint _level)
@@ -878,6 +899,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         collectResourcesAndSub(_ship,energy,graphene,metal);
         s.resources.endUpgrade = end;
         addResourceLevel(s.resources,_type,_index);
+        s.points++;
     }
 
     /*
@@ -1174,6 +1196,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         else 
             fireCannonInternalAccuracy(_from,_to,target,damage);
 
+        from.points++;
     }
 
     function fireCannonInternalNormal(uint _from, uint _to, uint damage)
@@ -1182,7 +1205,7 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         GameSpaceShip storage to = shipsInGame[_to];
                     
         if (to.damage + damage >= 100) {
-            destroyShip(_to);
+            to.destroyed = true;
             emit FireCannonEvent(_from,_to,100,true);
         }
         else {
@@ -1440,7 +1463,14 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
 
         shipsInGame[_from].lock.fleet = lock;
 
-        return attackShipResult(_from,_to,aRemain,dRemain);
+        if (battle) {
+            if (aRemain > 0)
+                shipsInGame[_from].points++;
+            else
+                shipsInGame[_to].points++;
+        }
+
+        attackShipResult(_from,_to,aRemain,dRemain);
     }
 
 
@@ -1478,6 +1508,11 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
             killFleet(_ship,cons-energy);
     }
 
+    function addTakedowns(uint _ship, uint t)
+        internal
+    {
+        shipsInGame[_ship].takedowns += t;
+    }
 
     function attackShipResult(uint _from, uint _to, uint aRemain, uint dRemain)
         private
@@ -1497,11 +1532,16 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
             g = 0;
             m = 0;
         }
+
         aSize = getFleetSize(_from);
         dSize = getFleetSize(_to);
 
         setFleetSize(_from,aRemain);
         setFleetSize(_to,dRemain);
+
+        addTakedowns(_from,dSize-dRemain);
+        addTakedowns(_to,aSize-aRemain);
+
         emit AttackShipEvent(_from,_to,aSize,dSize,aRemain,dRemain,e,g,m);
     }
 
@@ -1533,22 +1573,6 @@ contract GameShipFactory_linked is GameFactory, GameEvents {
         w.energy -= e;
         w.graphene -= g;
         w.metal -= m;
-    }
-
-
-    
-
-    function destroyShip(uint _ship)
-        private
-    {
-        address owner = shipsInGame[_ship].owner;
-        playing[owner] = false;
-        unsetInMapPosition(shipsInGame[_ship].x,shipsInGame[_ship].y);
-        delete(ownerToShip[owner]);
-        delete(shipsInGame[_ship]);
-        isShipInGame[_ship] = false;
-        require(spaceShipInterface.throwShip(_ship));
-        players = players - 1;
     }
 
     function toSack(uint _ship, uint load) 

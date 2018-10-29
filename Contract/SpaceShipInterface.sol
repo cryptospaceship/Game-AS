@@ -1,8 +1,6 @@
-pragma solidity ^0.4.23;
+pragma solidity ^0.4.25;
 
 contract SpaceShipInterface {
-
-    function throwShip(uint _ship) external returns(bool);
 
     function getQAIM(uint _ship, uint qaim) external view returns(uint);
 
@@ -20,12 +18,14 @@ contract SpaceShipInterface {
             uint plays,
             uint wins,
             uint launch,
+            uint progress,
+            uint qaims,
             bool inGame
         );
 
     function getShipQaim(uint _ship) external view returns(uint8[32] qaim);
         
-    function setGame(uint _ship) external returns(bool);
+    function setGame(uint _ship) external;
 
 }
 

@@ -37,13 +37,6 @@ contract GameSpacialPort is GameShipMap {
         spacialPort.fleetDefense = fleetDefense;
     }
 
-    function setPortFleetSize(uint fleetSize)
-        external
-        onlyOwner
-    {
-        spacialPort.fleetSize = fleetSize;
-    }
-
     function getPort()
         external
         view

@@ -14,6 +14,7 @@ contract GameFactory is Mortal, GameSpacialPort {
     address admin;
     bool gameReady;
     uint gameLaunch;
+    uint shipWinner;
     uint gamePlayValue;
     uint endBlock;
     uint players;
@@ -58,28 +59,6 @@ contract GameFactory is Mortal, GameSpacialPort {
         require(msg.sender == spaceShipContract);
         _;
     }
-
-    event WinnerEvent(
-        address winner,
-        uint reward
-    );
-
-    function claimVictory()
-        external
-        isGameReady
-    {
-        require(candidate != address(0) && endBlock <= block.number && endBlock != 0);
-        winner = candidate;
-        endBlock = 0;
-        gameReady = false;
-
-        emit WinnerEvent(
-            winner,
-            address(this).balance
-        );
-        candidate.transfer(address(this).balance);
-    }
-
 
     function setGameAttributes(address _shipContract, uint _startAt, uint mapSideSize)
         external
