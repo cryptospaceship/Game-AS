@@ -17,6 +17,6 @@ solc --link --libraries <lib-name>:<lib-address> build\GameShipFactory_linked.bi
 
 
 
-C:\Users\ebilli\Documents\GitHub>solc.exe Game-AS\Contract\GamePlay.sol --bin --abi -o Game-AS\Build --overwrite --optimize --optimize-runs 1
+solc Game-AS\Contract\GamePlay.sol --bin --abi -o Game-AS\Build --overwrite --optimize --optimize-runs 1
 
-C:\Users\ebilli\Documents\GitHub>solc --link --libraries Game-AS/Contract/GameLib.sol:GameLib:0x052ef40ccda2d51ca3d49cc3d6007b25965bec5b Game-AS\Build\GamePlay.bin
+solc --link --libraries Game-AS/Contract/GameLib.sol:GameLib:0x052ef40ccda2d51ca3d49cc3d6007b25965bec5b Game-AS\Build\GamePlay.bin
