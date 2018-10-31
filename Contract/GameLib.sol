@@ -111,7 +111,7 @@ library GameLib {
         view
         returns(bool valid, uint energy, uint graphene, uint metal, uint lock)
     {
-        valid = (distance == 1 && ( (level == 1 && damageToRepair <=10) || (level == 2 && damageToRepair <= 20)));
+        valid = (distance == 0) || (distance == 1 && ( (level == 1 && damageToRepair <=10) || (level == 2 && damageToRepair <= 20)));
         if (valid) {
             (energy,graphene,metal) = getRepairCost(damageToRepair);
             lock = lockRepair(level,damage);

@@ -152,7 +152,7 @@ contract GameShipMap is Ownable {
 	    returns(uint) 
     {
         uint8[11] memory resources = [0,45,15,12,9,7,5,4,1,1,1];
-        uint n = uint256(keccak256(x,y)) % size;
+        uint n = uint256(keccak256(abi.encodePacked(x,y))) % size;
         uint i;
         uint top;
         uint botton;
