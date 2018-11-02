@@ -172,15 +172,14 @@ contract GameShipFactory is GameFactory, GameEvents {
         /**
          * Place Ship in Map
          */
-        gss.x = uint(keccak256(abi.encodePacked(gss.shipName,block.number))) % sideSize;
-        gss.y = uint(keccak256(abi.encodePacked(block.number,gss.shipName))) % sideSize;
+        (gss.x, gss.y) = GameLib.calcInitialPosition(gss.shipName,sideSize);
         setInMapPosition(_ship,gss.x,gss.y);
-        (gss.resourceDensity[0],gss.resourceDensity[1],gss.resourceDensity[2]) = getResourceDensity(gss.x,gss.y);
+        (gss.resourceDensity[0],gss.resourceDensity[1],gss.resourceDensity[2]) = GameLib.getResourceDensity(gss.x,gss.y,size);
         
         shipsPlaying = shipsPlaying + 1;
         shipsId.push(_ship);
         players = players + 1;
-        emit ShipStartPlay(_ship,block.number);
+        emit ShipStartPlayEvent(_ship,block.number);
     }
 
 
@@ -203,7 +202,7 @@ contract GameShipFactory is GameFactory, GameEvents {
         isShipInGame[_ship] = false;
         players = players - 1;
 
-        emit ShipEndPlay(_ship,block.number);
+        emit ShipEndPlayEvent(_ship,block.number);
         return (win,points);
     }
 }

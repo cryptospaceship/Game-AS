@@ -142,17 +142,20 @@ contract GamePlay is GameShipFactory {
         external
         isGameReady
     {
+        uint balance = address(this).balance;
         require(candidate != address(0) && endBlock <= block.number && endBlock != 0);
         winner = candidate;
         endBlock = 0;
         gameReady = false;
+        
 
         emit WinnerEvent(
+            ownerToShip[winner],
             winner,
-            address(this).balance
+            balance
         );
         shipsInGame[ownerToShip[winner]].points += 500;
-        candidate.transfer(address(this).balance);
+        candidate.transfer(balance);
     }
 
     function repairShip(uint _from, uint _to, uint units)
@@ -179,7 +182,7 @@ contract GamePlay is GameShipFactory {
 
 
     function repairShipInternal(uint _from, uint _to, uint units)
-        private
+        internal
     {
         GameSpaceShip storage from = shipsInGame[_from];
         GameSpaceShip storage to = shipsInGame[_to];
@@ -208,7 +211,7 @@ contract GamePlay is GameShipFactory {
 
 
     function convertResourceInternal(uint _ship, uint src, uint dst, uint n)
-        private
+        internal
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
         uint conv;
@@ -349,7 +352,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function sendResourcesInternal(uint _from, uint _to, uint energy, uint graphene, uint metal)
-        private
+        internal
     {
         GameSpaceShip storage to = shipsInGame[_to];
         GameSpaceShip storage from = shipsInGame[_from];
@@ -386,7 +389,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function designFleetInternal(uint _ship, uint _attack, uint _defense, uint _distance, uint _load)
-        private
+        internal
     {
         require(canDesignFleet(_ship));
 
@@ -416,7 +419,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function buildFleetInternal(uint _ship, uint size)
-        private
+        internal
     {
         uint e;
         uint g;
@@ -445,7 +448,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function moveToInternal(uint _ship, uint x, uint y)
-        private
+        internal
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
         bool inRange;
@@ -473,7 +476,7 @@ contract GamePlay is GameShipFactory {
         setInMapPosition(_ship,x,y);
         ship.x = x;
         ship.y = y;
-        (ship.resourceDensity[0],ship.resourceDensity[1],ship.resourceDensity[2]) = getResourceDensity(x,y);
+        (ship.resourceDensity[0],ship.resourceDensity[1],ship.resourceDensity[2]) = GameLib.getResourceDensity(x,y,size);
     }    
 
     /**
@@ -493,7 +496,7 @@ contract GamePlay is GameShipFactory {
 
 
     function landToInternal(uint _ship, uint x, uint y, bool defense)
-        private
+        internal
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
         bool inRange;
@@ -552,7 +555,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function disableConverter(uint _ship)
-        private
+        internal
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
         ship.resources.gConverter = 0;
@@ -561,7 +564,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function setFleetDesign(uint _ship, uint _attack, uint _defense, uint _distance, uint _load)
-        private
+        internal
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
 
@@ -572,7 +575,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function upgradeBuildingInternal(uint _ship, uint _type, uint _role)
-        private
+        internal
     {
         uint energy;
         uint graphene;
@@ -602,7 +605,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function validBuildingLevel(uint _type, uint _level)
-        private
+        internal
         pure
         returns(bool)
     {
@@ -613,7 +616,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function upgradeResourceInternal(uint _ship, uint _type, uint _index)
-        private
+        internal
     {
         GameSpaceShip storage s = shipsInGame[_ship];
         uint energy;
@@ -828,7 +831,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getFleetProduction(uint _ship)
-        private
+        internal
         view
         returns
         (
@@ -853,7 +856,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getFleetConfig(uint _ship)
-        private
+        internal
         view
         returns
         (
@@ -871,7 +874,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getFleetCost(uint _ship)
-        private
+        internal
         view
         returns
         (
@@ -892,7 +895,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function fireCannonInternal(uint _from, uint _to, uint target)
-        private
+        internal
     {
         GameSpaceShip storage from = shipsInGame[_from];
         /* Listado de Targets
@@ -935,7 +938,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function fireCannonInternalNormal(uint _from, uint _to, uint damage)
-        private
+        internal
     {
         GameSpaceShip storage to = shipsInGame[_to];
                     
@@ -953,7 +956,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function fireCannonInternalAccuracy(uint _from, uint _to, uint target, uint damage)
-        private
+        internal
     {
         GameSpaceShip storage to = shipsInGame[_to];
         uint preLevel;
@@ -984,7 +987,7 @@ contract GamePlay is GameShipFactory {
 
 
     function destroyResources(uint _ship, uint _type, uint _index, uint damage) 
-        private
+        internal
         returns(uint preLevel, uint level)
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
@@ -1019,7 +1022,7 @@ contract GamePlay is GameShipFactory {
 
 
     function destroyBuildings(uint _ship, uint _type, uint damage) 
-        private
+        internal
         returns(uint preLevel, uint level)
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
@@ -1063,7 +1066,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function attackPortInternal(uint _from)
-        private
+        internal
     {
         uint aRemain;
         uint lock;
@@ -1090,7 +1093,7 @@ contract GamePlay is GameShipFactory {
 
 
     function attackPortResult(uint _from, uint aRemain, uint[5] dRemain)
-        private
+        internal
     {
         uint aSize;
         uint[5] memory dSize;
@@ -1137,8 +1140,8 @@ contract GamePlay is GameShipFactory {
             }
 
             emit PortConquestEvent(
-                candidate,
-                _from
+                _from,
+                candidate
             );
 
         } else {
@@ -1161,7 +1164,7 @@ contract GamePlay is GameShipFactory {
 
 
     function portCombat(uint[5] attacker, uint distance)
-        private
+        internal
         view
         returns(bool, uint, uint[5], uint)
     {
@@ -1180,7 +1183,7 @@ contract GamePlay is GameShipFactory {
         
 
     function attackShipInternal(uint _from, uint _to, bool battle)
-        private
+        internal
     {
         uint aRemain;
         uint dRemain;
@@ -1210,7 +1213,7 @@ contract GamePlay is GameShipFactory {
 
 
     function shipCombat(uint _from, uint _to, uint distance, bool battle)
-        private
+        internal
         view
         returns(bool, uint, uint, uint)
     {
@@ -1233,7 +1236,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function cutToMaxFleet(uint _ship)
-        private
+        internal
     {
         uint energy;
         uint cons;
@@ -1250,7 +1253,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function attackShipResult(uint _from, uint _to, uint aRemain, uint dRemain)
-        private
+        internal
     {
         uint e;
         uint g;
@@ -1282,7 +1285,7 @@ contract GamePlay is GameShipFactory {
 
 
     function _addWarehouse(Warehouse storage w, uint e, uint g, uint m, uint level)
-        private 
+        internal 
     {
         uint load = GameLib.getWarehouseLoadByLevel(level);
         if (w.energy + e > load)
@@ -1302,7 +1305,7 @@ contract GamePlay is GameShipFactory {
     }
     
     function _subWarehouse (Warehouse storage w, uint e, uint g, uint m) 
-        private 
+        internal 
     {
         require(w.energy >= e && w.graphene >= g && w.metal >= m);
         w.energy -= e;
@@ -1311,7 +1314,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function toSack(uint _ship, uint load) 
-        private
+        internal
         returns(uint e, uint g, uint m)
     {
         uint energy;
@@ -1336,7 +1339,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function collectResourcesAndSub(uint _ship, uint e, uint g, uint m)
-        private
+        internal
     {
         GameSpaceShip storage s = shipsInGame[_ship];
         uint energy;
@@ -1360,7 +1363,7 @@ contract GamePlay is GameShipFactory {
 
 
     function addFleet(uint _ship, uint size)
-        private
+        internal
     {
         bool build;
         uint end;
@@ -1382,7 +1385,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function addFleetToProduction(uint _ship, uint size, uint end)
-        private
+        internal
     {
         Fleet storage a = shipsInGame[_ship].fleet;
         if (a.fleetInProduction > 0)
@@ -1393,7 +1396,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function killFleet(uint _ship, uint size)
-        private
+        internal
     {
         Fleet storage a = shipsInGame[_ship].fleet;
         uint left;
@@ -1415,7 +1418,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getResources(uint _ship)
-        private
+        internal
         view
         returns(uint energy, uint graphene, uint metal)    
     {
@@ -1435,7 +1438,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getWarehouseLoad(uint _ship)
-        private
+        internal
         view
         returns(uint load)
     {
@@ -1443,7 +1446,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getUnharvestResources(uint _ship)
-        private
+        internal
         view
         returns(uint energy, uint graphene, uint metal)
     {
@@ -1472,7 +1475,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getProductionPerBlock(uint _ship, bool withFleet)
-        private
+        internal
         view
         returns(uint energy, uint graphene, uint metal)
     {
@@ -1510,7 +1513,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getShipPosition(uint _ship)
-        private
+        internal
         view
         returns(uint[2])
     {
@@ -1519,7 +1522,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getShipDistance(uint _from, uint _to)
-        private
+        internal
         view
         returns(uint)
     {
@@ -1527,7 +1530,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getPortDistance(uint _from)
-        private
+        internal
         view
         returns(uint)
     {
@@ -1535,7 +1538,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getDistanceTo(uint _from, uint x, uint y)
-        private
+        internal
         view
         returns(uint)
     {
@@ -1543,7 +1546,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getQAIM(uint _ship, uint qaim)
-        private
+        internal
         view
         returns(uint)
     {
@@ -1551,7 +1554,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getFleetConsumption(uint _ship)
-        private
+        internal
         view
         returns(uint)
     {
@@ -1560,7 +1563,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getFleetRange(uint _ship)
-        private
+        internal
         view
         returns(uint)
     {
@@ -1570,7 +1573,7 @@ contract GamePlay is GameShipFactory {
 
 
     function getFleetSize(uint _ship)
-        private
+        internal
         view
         returns(uint)
     {
@@ -1581,7 +1584,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getFleetLoad(uint _ship)
-        private
+        internal
         view
         returns(uint)
     {
@@ -1590,7 +1593,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function setFleetSize(uint _ship, uint size)
-        private
+        internal
     {
         Fleet storage a = shipsInGame[_ship].fleet;
         if (a.fleetEndProduction <= block.number && a.fleetInProduction > 0)
@@ -1599,7 +1602,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getFleetAttack(uint _ship)
-        private
+        internal
         view
         returns(uint, uint)
     {
@@ -1608,7 +1611,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getPortDefend()
-        private
+        internal
         view
         returns(uint[5] dPoints, uint[5] dSize)
     {
@@ -1626,7 +1629,7 @@ contract GamePlay is GameShipFactory {
 
 
     function getFleetDefend(uint _ship)
-        private
+        internal
         view
         returns(uint, uint)
     {
@@ -1635,7 +1638,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function canDesignFleet(uint _ship) 
-        private
+        internal
         view
         returns(bool)
     {
@@ -1647,7 +1650,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function canBuildFleet(uint _ship)
-        private
+        internal
         view
         returns(bool)
     {
@@ -1656,7 +1659,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function fleetConfigured(uint _ship)
-        private
+        internal
         view
         returns(bool)
     {
@@ -1665,7 +1668,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getResourceLevel (Resources storage resource) 
-        private 
+        internal 
         view 
         returns(uint[6] e, uint g, uint m) 
     {
@@ -1693,7 +1696,7 @@ contract GamePlay is GameShipFactory {
 
 
     function getBuildingLevel (Buildings storage building) 
-        private 
+        internal 
         view 
         returns(uint w, uint h, uint c) 
     {
@@ -1718,7 +1721,7 @@ contract GamePlay is GameShipFactory {
     }
     
     function getWarehouseLevel(uint _ship)
-        private
+        internal
         view
         returns(uint)
     {
@@ -1726,7 +1729,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getHangarLevel(uint _ship)
-        private
+        internal
         view
         returns(uint)
     {
@@ -1734,7 +1737,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getCannonLevel(uint _ship)
-        private
+        internal
         view
         returns(uint)
     {
@@ -1744,7 +1747,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getConverterLevel(uint _ship)
-        private
+        internal
         view
         returns(uint)
     {
@@ -1754,7 +1757,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getReparerLevel(uint _ship)
-        private
+        internal
         view
         returns(uint)
     {
@@ -1764,7 +1767,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getRole( uint _ship )
-        private
+        internal
         view
         returns(uint)
     {
@@ -1773,7 +1776,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function withReparer(uint _ship)
-        private
+        internal
         view
         returns(bool)
     {
@@ -1781,7 +1784,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function withCannon(uint _ship)
-        private
+        internal
         view
         returns(bool)
     {
@@ -1789,7 +1792,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function withConverter(uint _ship)
-        private
+        internal
         view
         returns(bool)
     {
@@ -1797,7 +1800,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function getResourceLevelByType( Resources storage resource, uint _type, uint _index)
-        private
+        internal
         view
         returns(uint)
     {
@@ -1816,7 +1819,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function addResourceLevel (Resources storage resource, uint _type, uint _index) 
-        private 
+        internal 
     {
         if (_type == 0) {
             resource.level[_index+1]++;
@@ -1836,7 +1839,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function setResourceLevel (Resources storage resource, uint _type, uint _index, uint level) 
-        private 
+        internal 
     {
         if (_type == 0) {
             resource.level[_index+1] = level;
@@ -1860,7 +1863,7 @@ contract GamePlay is GameShipFactory {
      * @return _index en el caso de que sea un panel de 0 a 5
      */
     function targetToStructure(uint target)
-        private
+        internal
         pure
         returns(uint structure, uint _type, uint _index)
     {
@@ -1889,7 +1892,7 @@ contract GamePlay is GameShipFactory {
      * Hay que cambiar el indice de los buildings
      */
     function getBuildingLevelByType( Buildings storage building, uint _type)
-        private
+        internal
         view
         returns(uint)
     {
@@ -1910,7 +1913,7 @@ contract GamePlay is GameShipFactory {
     }
     
     function addBuildingLevel (Buildings storage building, uint _type)
-        private 
+        internal 
     {
         if (_type == 0) {
             building.level[1]++;
@@ -1930,7 +1933,7 @@ contract GamePlay is GameShipFactory {
     }
 
     function setBuildingLevel (Buildings storage building, uint _type, uint level)
-        private 
+        internal 
     {
         if (_type == 0) {
             building.level[1] = level;

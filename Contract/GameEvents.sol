@@ -14,13 +14,13 @@ contract GameEvents {
         uint _m
     );
 
-    event ShipStartPlay(
-        uint _id,
+    event ShipStartPlayEvent(
+        uint _from,
         uint _block
     );
 
-    event ShipEndPlay(
-        uint _id,
+    event ShipEndPlayEvent(
+        uint _from,
         uint _block
     );
 
@@ -34,8 +34,8 @@ contract GameEvents {
     );
 
     event PortConquestEvent(
-        address owner,
-        uint _from
+        uint _from,
+        address owner
     );
 
     event FireCannonEvent(
@@ -62,6 +62,7 @@ contract GameEvents {
     );
 
     event WinnerEvent(
+        uint _from,
         address winner,
         uint reward
     );

@@ -11,15 +11,12 @@ contract GameFactory is Mortal, GameSpacialPort {
     address spaceShipContract;
     address candidate;
     address winner;
-    address admin;
     bool gameReady;
     uint gameLaunch;
     uint shipWinner;
     uint gamePlayValue;
     uint endBlock;
     uint players;
-
-    using AddressUtils for address;
 
     function getGame() 
         external
@@ -81,7 +78,7 @@ contract GameFactory is Mortal, GameSpacialPort {
     function setSpaceShipContract(address _address)
         internal
     {
-        require(_address.isContract());
+        require(AddressUtils.isContract(_address));
         /**
          TODO: Check if a valid contract, maybe using ERC165
          */

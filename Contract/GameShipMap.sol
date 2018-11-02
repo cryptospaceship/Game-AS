@@ -1,6 +1,7 @@
 pragma solidity 0.4.25;
 
 import "./Ownable.sol";
+import "./GameLib.sol";
 
 contract GameShipMap is Ownable {
     uint[64][64]    gameMap;
@@ -25,7 +26,7 @@ contract GameShipMap is Ownable {
         ) 
     {
         id = gameMap[x][y];
-        (,grapheneDensity,metalDensity) = getResourceDensity(x,y);
+        (,grapheneDensity,metalDensity) = GameLib.getResourceDensity(x,y,size);
     }
     
    /*
@@ -73,23 +74,7 @@ contract GameShipMap is Ownable {
         ret[50] = y;
         return ret;
     }
- 
-   /*
-    * @title Get in Position
-    * @dev 
-    * @param x Axis X(uint)
-    * @param y Axis Y(uint)
-    * @return Id of the object or 0 
-    */
-    function getResourceDensity(uint x, uint y) 
-    	internal 
-	    view 
-	    returns(uint,uint,uint) 
-    {
-        if (x >= sideSize || y >= sideSize)
-            return (0,0,0);
-        return(0,_calcDensity(x+5,y),_calcDensity(y+5,x));
-    } 
+    
 
    /*
     * @title Get in Position
@@ -130,44 +115,11 @@ contract GameShipMap is Ownable {
         sideSize = s;
     }
 
-
     function getMapPosition(uint x, uint y)
         internal
         view
         returns(uint)
     {
         return gameMap[x][y];
-    }
-
-   /*
-    * @title Get in Position
-    * @dev 
-    * @param x Axis X(uint)
-    * @param y Axis Y(uint)
-    * @return Id of the object or 0 
-    */
-    function _calcDensity(uint x, uint y) 
-	    internal 
-	    view 
-	    returns(uint) 
-    {
-        uint8[11] memory resources = [0,45,15,12,9,7,5,4,1,1,1];
-        uint n = uint256(keccak256(abi.encodePacked(x,y))) % size;
-        uint i;
-        uint top;
-        uint botton;
-
-        n = n % size;
-        
-        top = size;
-        
-        for ( i = 1; i <= 10; i++ ) {
-            botton = top - (resources[i]*size/100);
-            if ( n <= top && n > botton)
-                return i;
-            else
-                top = botton;
-        }
-        return 1;
     }
 }

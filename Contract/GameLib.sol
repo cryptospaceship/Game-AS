@@ -8,34 +8,48 @@ import "./fisics/kovan.sol";
 
 
 library GameLib {
-/*  enum ResourceIndex {
-        INDEX_UPGRADING,
-        PANEL_1,
-        PANEL_2,
-        PANEL_3,
-        PANEL_4,
-        PANEL_5,
-        PANEL_6,
-        GRAPHENE,
-        METAL
+
+    function calcInitialPosition(string name, uint size)
+        external
+        view
+        returns(uint x, uint y)
+    {
+        x = uint(keccak256(abi.encodePacked(name,block.number))) % size;
+        y = uint(keccak256(abi.encodePacked(block.number,name))) % size;
     }
 
-    enum BuildingIndex {
-        INDEX_UPGRADING,
-        WAREHOUSE,
-        HANGAR,
-        WOPR
-    }
-    
-    enum QAIM {
-        FLEET_POINTS,
-        RESOURCES_IMPROVE,
-        BUILDINGS_IMPROVE,
-        FLEET_IMPROVE,
-        SHIP_MOVEMMENT_IMPROVE,
-        MODE_IMPROVE
-    } */
+    function _calcDensity(uint x, uint y, uint size) 
+	    internal 
+	    pure
+	    returns(uint) 
+    {
+        uint8[11] memory resources = [0,45,15,12,9,7,5,4,1,1,1];
+        uint n = uint256(keccak256(abi.encodePacked(x,y))) % size;
+        uint i;
+        uint top;
+        uint botton;
 
+        n = n % size;
+        
+        top = size;
+        
+        for ( i = 1; i <= 10; i++ ) {
+            botton = top - (resources[i]*size/100);
+            if ( n <= top && n > botton)
+                return i;
+            else
+                top = botton;
+        }
+        return 1;
+    }    
+
+    function getResourceDensity(uint x, uint y, uint size) 
+    	external
+	    pure
+	    returns(uint,uint,uint) 
+    {
+        return(0,_calcDensity(x+5,y,size),_calcDensity(y+5,x,size));
+    } 
 
 
     function getConvertionRate(uint resource, uint converterLevel, uint damage)
