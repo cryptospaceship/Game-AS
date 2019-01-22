@@ -91,12 +91,6 @@ contract GameShipFactory is GameFactory, GameEvents {
      */
     uint[] shipsId;
 
-    /*
-     * Cantidad de Naves en Juego
-     */
-    uint shipsPlaying;
-
-
     function getShipPoints(uint _ship)
         public
         view
@@ -114,10 +108,12 @@ contract GameShipFactory is GameFactory, GameEvents {
         bool inGame;
         GameSpaceShip storage gss = shipsInGame[_ship];
 
-        require(!isShipInGame[_ship]);
+        require(
+            gamePlayValue == msg.value && 
+            isShipInGame[_ship] == false &&
+            qaim_0 < 6 && qaim_1 < 6
+        );
 
-        require(qaim_0 < 6 && qaim_1 < 6);
-        
         /*
         0    address owner,
         1    string name,
@@ -142,12 +138,6 @@ contract GameShipFactory is GameFactory, GameEvents {
         
         spaceShipInterface.setGame(_ship);
 
-        /**
-         * Init wharehouse Stock
-         */
-        (gss.warehouse.energy,gss.warehouse.graphene,gss.warehouse.metal) = GameLib.getInitialWarehouse();
-
-
         gss.qaim[qaim_0] = spaceShipInterface.getQAIM(_ship,qaim_0);
         gss.qaim[qaim_1] = spaceShipInterface.getQAIM(_ship,qaim_1);
 
@@ -160,6 +150,9 @@ contract GameShipFactory is GameFactory, GameEvents {
         /**
          * Init Ship Locks
          */
+        isShipInGame[_ship] = true;
+
+        
         gss.lastHarvest = gameLaunch;
         gss.lock.move = gameLaunch;
         gss.lock.mode = gameLaunch;
@@ -167,21 +160,26 @@ contract GameShipFactory is GameFactory, GameEvents {
         gss.buildings.endUpgrade = gameLaunch;
         gss.lock.fleet = gameLaunch;
         gss.lock.wopr = gameLaunch;
-        isShipInGame[_ship] = true;
-
+        setInitialValues(gss);
         /**
          * Place Ship in Map
          */
-        (gss.x, gss.y) = GameLib.calcInitialPosition(gss.shipName,sideSize);
+
         setInMapPosition(_ship,gss.x,gss.y);
-        (gss.resourceDensity[0],gss.resourceDensity[1],gss.resourceDensity[2]) = GameLib.getResourceDensity(gss.x,gss.y,size);
         
-        shipsPlaying = shipsPlaying + 1;
-        shipsId.push(_ship);
+        addUnique(id);
         players = players + 1;
         emit ShipStartPlayEvent(_ship,block.number);
     }
 
+    function addUnique(uint id) internal {
+        uint i;
+        for ( i = 0; i < shipsId.length; i++) {
+            if (shipsId[i] == id)
+                return;
+        }
+        shipsId.push(id);
+    }
 
     function removeShip(uint _ship)
         external
@@ -205,4 +203,18 @@ contract GameShipFactory is GameFactory, GameEvents {
         emit ShipEndPlayEvent(_ship,block.number);
         return (win,points);
     }
+
+    function setInitialValues(GameSpaceShip storage gss)
+        internal
+    {
+        Warehouse storage w = gss.warehouse;
+        uint stock;
+
+        (gss.x, gss.y, stock, gss.resourceDensity) = GameLib.getInitialValues(gss.shipName,sideSize);
+        
+        w.energy = stock;
+        w.graphene = stock;
+        w.metal = stock;
+    }
+
 }

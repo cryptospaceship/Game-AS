@@ -154,6 +154,7 @@ contract GamePlay is GameShipFactory {
             winner,
             balance
         );
+        
         shipsInGame[ownerToShip[winner]].points += 500;
         candidate.transfer(balance);
     }
@@ -192,8 +193,6 @@ contract GamePlay is GameShipFactory {
         uint metal;
         uint lock;
 
-        require(units <= to.damage);
-
         (valid,energy,graphene,metal,lock) = GameLib.checkRepair(
             getShipDistance(_from,_to),
             getReparerLevel(_from),
@@ -203,9 +202,9 @@ contract GamePlay is GameShipFactory {
 
         require(valid);
 
-        collectResourcesAndSub(_from,energy,graphene,metal);
-        to.damage = to.damage + units;
         from.lock.wopr = lock;
+        collectResourcesAndSub(_from,energy,graphene,metal);
+        to.damage = to.damage - units;
         from.points++;
     }
 
@@ -216,14 +215,16 @@ contract GamePlay is GameShipFactory {
         GameSpaceShip storage ship = shipsInGame[_ship];
         uint conv;
         uint lock;
+        bool valid;
 
-        require(src >= 0 && src <= 2 && dst >= 0 && dst <= 2 && src != dst);
-
-        (conv,lock) = GameLib.getConvertionRate(
+        (valid,conv,lock) = GameLib.getConvertionRate(
             n,
+            src,
+            dst,
             getConverterLevel(_ship),
             ship.damage
         );
+        require(valid);
 
         ship.lock.wopr = lock;
 
@@ -261,8 +262,7 @@ contract GamePlay is GameShipFactory {
 
         (g,m) = GameLib.getProductionToConverter(
             ship.resources.level,
-            ship.resources.endUpgrade,
-            getConverterLevel(_ship)
+            ship.resources.endUpgrade
         );
 
         require(graphene <= g && metal <= m);
@@ -685,7 +685,7 @@ contract GamePlay is GameShipFactory {
         view
         returns (uint[] ids)
     {
-        ids = new uint[](shipsPlaying);
+        ids = new uint[](players);
         uint i;
         uint j;
         j = 0;
@@ -706,6 +706,8 @@ contract GamePlay is GameShipFactory {
             uint x,
             uint y,
             uint mode,
+            uint[6] memory qaim,
+            uint role,
             bool inPort
         )
     {
@@ -713,6 +715,8 @@ contract GamePlay is GameShipFactory {
         x = shipsInGame[_ship].x;
         y = shipsInGame[_ship].y;
         mode = shipsInGame[_ship].mode;
+        qaim = shipsInGame[_ship].qaim;
+        (role,) = getRole(_ship);
         inPort = shipsInGame[_ship].inPort;
     }
 
@@ -743,12 +747,16 @@ contract GamePlay is GameShipFactory {
             uint[6] memory energyLevel,
             uint grapheneCollectorLevel,
             uint metalCollectorLevel,
-            uint resourceUpgrading
+            uint resourceUpgrading,
+            uint gConverter,
+            uint mConverter
         )
     {
         (energy,graphene,metal) = getProductionPerBlock(_ship,true);
         (energyLevel,grapheneCollectorLevel,metalCollectorLevel) = getResourceLevel(shipsInGame[_ship].resources);
         resourceUpgrading = shipsInGame[_ship].resources.level[0];
+        gConverter = shipsInGame[_ship].resources.gConverter;
+        mConverter = shipsInGame[_ship].resources.mConverter;
     }
 
     function viewShipVars(uint _ship)
@@ -774,34 +782,22 @@ contract GamePlay is GameShipFactory {
  
         damage = ship.damage;     
 
-        if (b > ship.resources.endUpgrade) 
-            endUpgradeResource = 0;
-        else
+        if (b < ship.resources.endUpgrade) 
             endUpgradeResource = ship.resources.endUpgrade - b;
 
-        if (b > ship.buildings.endUpgrade) 
-            endUpgradeBuilding = 0;
-        else
+        if (b < ship.buildings.endUpgrade) 
             endUpgradeBuilding = ship.buildings.endUpgrade - b;
 
-        if (b > ship.lock.move) 
-            countdownToMove = 0;
-        else
+        if (b < ship.lock.move) 
             countdownToMove = ship.lock.move - b;
 
-        if (b > ship.lock.mode)
-            countdownToMode = 0;
-        else
+        if (b < ship.lock.mode)
             countdownToMode = ship.lock.mode - b;
         
-        if (b > ship.lock.fleet)
-            countdownToFleet = 0;
-        else
+        if (b < ship.lock.fleet)
             countdownToFleet = ship.lock.fleet - b;
 
-        if (b > ship.lock.wopr)
-            countdownToWopr = 0;
-        else
+        if (b < ship.lock.wopr)
             countdownToWopr = ship.lock.wopr - b;
     }
 
@@ -967,12 +963,12 @@ contract GamePlay is GameShipFactory {
 
         (structure,_type,_index) = targetToStructure(target);
 
+        collectResourcesAndSub(_to, 0,0,0);
+
         if ( structure == 1 ) {
-            collectResourcesAndSub(_to, 0,0,0);
             (preLevel, newLevel) = destroyResources(_to,_type,_index,damage);
         } else {
             if ( _type == 2 && withConverter(_to) ) {
-                collectResourcesAndSub(_to, 0,0,0);
                 to.resources.gConverter = 0;
                 to.resources.mConverter = 0;
             }
@@ -1188,6 +1184,7 @@ contract GamePlay is GameShipFactory {
         uint aRemain;
         uint dRemain;
         uint lock;
+        uint damage;
         bool combat;
 
         (combat, aRemain, dRemain, lock) = shipCombat(
@@ -1202,13 +1199,17 @@ contract GamePlay is GameShipFactory {
         shipsInGame[_from].lock.fleet = lock;
 
         if (battle) {
-            if (aRemain > 0)
+            if (aRemain > 0) {
                 shipsInGame[_from].points++;
-            else
+                /*
+                 * Calcula el daño realizado
+                 */
+                damage = ( shipsInGame[_from].fleet.fleetConfig.attack * aRemain ) / 20000;
+            } else
                 shipsInGame[_to].points++;
         }
 
-        attackShipResult(_from,_to,aRemain,dRemain);
+        attackShipResult(_from,_to,aRemain,dRemain, damage);
     }
 
 
@@ -1252,23 +1253,18 @@ contract GamePlay is GameShipFactory {
         shipsInGame[_ship].takedowns += t;
     }
 
-    function attackShipResult(uint _from, uint _to, uint aRemain, uint dRemain)
+    function attackShipResult(uint _from, uint _to, uint aRemain, uint dRemain, uint damage)
         internal
     {
-        uint e;
-        uint g;
-        uint m;
+        uint e = 0;
+        uint g = 0;
+        uint m = 0;
         uint aSize;
         uint dSize;
 
         if (aRemain > 0) {
             (e,g,m) = toSack(_to,shipsInGame[_from].fleet.fleetConfig.load * aRemain);
             _addWarehouse(shipsInGame[_from].warehouse,e,g,m,getWarehouseLevel(_from));
-        }
-        else {
-            e = 0;
-            g = 0;
-            m = 0;
         }
 
         aSize = getFleetSize(_from);
@@ -1280,7 +1276,9 @@ contract GamePlay is GameShipFactory {
         addTakedowns(_from,dSize-dRemain);
         addTakedowns(_to,aSize-aRemain);
 
-        emit AttackShipEvent(_from,_to,aSize,dSize,aRemain,dRemain,e,g,m);
+        shipsInGame[_to].damage = shipsInGame[_to].damage + damage;
+
+        emit AttackShipEvent(_from,_to,aSize,dSize,aRemain,dRemain,damage,e,g,m);
     }
 
 
@@ -1352,13 +1350,9 @@ contract GamePlay is GameShipFactory {
             energy >= e && graphene >= g && metal >= m    
         );    // Pensar Mejor esta linea
         s.lastHarvest = block.number;   
-        energy -= e;
-        graphene -= g;
-        metal -= m;
-        s.warehouse.energy = energy;
-        s.warehouse.graphene = graphene;
-        s.warehouse.metal = metal;
-
+        s.warehouse.energy = energy - e;
+        s.warehouse.graphene = graphene - g;
+        s.warehouse.metal = metal - m;
     }
 
 
@@ -1452,23 +1446,18 @@ contract GamePlay is GameShipFactory {
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
         uint[3] memory resources;
-        if (!isGameStarted() || !isShipInGame[_ship]) {
-            energy = 0;
-            graphene = 0;
-            metal = 0;
-        }
-        else {
-            resources = GameLib.getUnharvestResources(
-                ship.resources.level, 
-                ship.resources.endUpgrade, 
-                ship.resourceDensity, 
-                getFleetConsumption(_ship),
-                ship.damage, 
-                ship.lastHarvest,
-                ship.resources.gConverter,
-                ship.resources.mConverter
-            );
-        }
+
+        resources = GameLib.getUnharvestResources(
+            ship.resources.level, 
+            ship.resources.endUpgrade, 
+            ship.resourceDensity, 
+            getFleetConsumption(_ship),
+            ship.damage, 
+            ship.lastHarvest,
+            ship.resources.gConverter,
+            ship.resources.mConverter
+        );
+
         energy = resources[0];
         graphene = resources[1];
         metal = resources[2];
@@ -1481,34 +1470,26 @@ contract GamePlay is GameShipFactory {
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
 
-        if (!isGameStarted() || !isShipInGame[_ship]) {
-            energy = 0;
-            graphene = 0;
-            metal = 0;
-        }
-        else {
-            if (withFleet) {
-                (energy,graphene,metal) = GameLib.getProduction(
-                    ship.resources.level,
-                    ship.resources.endUpgrade,
-                    ship.resourceDensity, 
-                    getFleetConsumption(_ship),
-                    ship.damage,
-                    ship.resources.gConverter,
-                    ship.resources.mConverter
-                );
-            } else {
-                (energy,graphene,metal) = GameLib.getProduction(
-                    ship.resources.level,
-                    ship.resources.endUpgrade,
-                    ship.resourceDensity, 
-                    0,
-                    ship.damage,
-                    ship.resources.gConverter,
-                    ship.resources.mConverter
-                );
-            }
-
+        if (withFleet) {
+            (energy,graphene,metal) = GameLib.getProduction(
+                ship.resources.level,
+                ship.resources.endUpgrade,
+                ship.resourceDensity, 
+                getFleetConsumption(_ship),
+                ship.damage,
+                ship.resources.gConverter,
+                ship.resources.mConverter
+            );
+        } else {
+            (energy,graphene,metal) = GameLib.getProduction(
+                ship.resources.level,
+                ship.resources.endUpgrade,
+                ship.resourceDensity, 
+                0,
+                ship.damage,
+                ship.resources.gConverter,
+                ship.resources.mConverter
+            );
         }
     }
 
@@ -1741,9 +1722,12 @@ contract GamePlay is GameShipFactory {
         view
         returns(uint)
     {
-        if (getRole(_ship) == 1)
-            return getBuildingLevelByType(shipsInGame[_ship].buildings,2);
-        return 0;
+        uint level;
+        uint role;
+        (role, level) = getRole(_ship);
+        if (role == 1)
+            return level;
+        return 0;    
     }
 
     function getConverterLevel(uint _ship)
@@ -1751,9 +1735,12 @@ contract GamePlay is GameShipFactory {
         view
         returns(uint)
     {
-        if (getRole(_ship) == 2)
-            return getBuildingLevelByType(shipsInGame[_ship].buildings,2);
-        return 0;
+        uint level;
+        uint role;
+        (role, level) = getRole(_ship);
+        if (role == 2)
+            return level;
+        return 0;    
     }
 
     function getReparerLevel(uint _ship)
@@ -1761,18 +1748,24 @@ contract GamePlay is GameShipFactory {
         view
         returns(uint)
     {
-        if (getRole(_ship) == 3)
-            return getBuildingLevelByType(shipsInGame[_ship].buildings,2);
+        uint level;
+        uint role;
+        (role, level) = getRole(_ship);
+        if (role == 3)
+            return level;
         return 0;    
     }
 
     function getRole( uint _ship )
         internal
         view
-        returns(uint)
+        returns(uint role, uint level)
     {
-        GameSpaceShip storage ship = shipsInGame[_ship];
-        return ship.buildings.role;
+        level = getBuildingLevelByType(shipsInGame[_ship].buildings,2);
+        if ( level > 0)
+            role = shipsInGame[_ship].buildings.role;
+        else 
+            role = 0;
     }
 
     function withReparer(uint _ship)

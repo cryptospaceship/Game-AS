@@ -9,6 +9,7 @@ contract GameEvents {
         uint _defender_size,
         uint _attacker_left,
         uint _defender_left,
+        uint _damage,
         uint _e,
         uint _g,
         uint _m

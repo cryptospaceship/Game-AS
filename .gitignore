@@ -15,3 +15,6 @@ Build/SpaceShipInterface.abi
 Build/SpaceShipInterface.bin
 Build/Utils.abi
 Build/Utils.bin
+Build/bFisics.bin
+Build/GameEvents.bin
+Build/GameShipFactory.bin

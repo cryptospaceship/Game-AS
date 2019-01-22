@@ -5,8 +5,8 @@ import "./GameLib.sol";
 
 contract GameShipMap is Ownable {
     uint[64][64]    gameMap;
-    uint            size;
-    uint            sideSize;
+    uint size;
+    uint sideSize;
     
    /*
     * @title Get in Position

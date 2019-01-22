@@ -9,8 +9,53 @@ import "./fisics/kovan.sol";
 
 library GameLib {
 
-    function calcInitialPosition(string name, uint size)
+    /**
+     * @dev getInitialValues(): Valores de inicializacion de la nave en el juego
+     * @param name Nombre de la Nave
+     * @param size Size del mapa
+     * @return Posicion x,y Stock de recursos y densidad
+     */
+    function getInitialValues(string name, uint size)
         external
+        view
+        returns(uint x, uint y, uint stock, uint[3] memory density)
+    {
+        (x,y) = calcInitialPosition(name,size);
+        stock = getInitialWarehouse();
+        (density[0],density[1],density[2]) = getResourceDensity(x,y,size);
+    }
+
+    /**
+     * @dev getConvertionRate(): Valores de inicializacion de la nave en el juego
+     * @param resources cantidad de recursos a convertir
+     * @param src recurso de origen
+     * @param dst recurso de destino
+     * @param converterLevel nivel de conversor
+     * @param damage damage de la nave
+     * @return si es valida la conversion, la cantidad de recursos convertidos y el tiempo de lockeo
+     */
+    function getConvertionRate(uint resources, uint src, uint dst, uint converterLevel, uint damage)
+        external
+        view
+        returns(bool valid, uint resConverted, uint lock)
+    {
+
+        valid = (src >= 0 && src <= 2 && dst >= 0 && dst <= 2 && src != dst);
+        if (!valid)
+            return;
+             
+        if (converterLevel == 2)
+            resConverted = resources / 2;
+        else
+            resConverted = resources / 4;
+
+        lock = lockConverter(converterLevel,damage);
+    }
+
+
+
+    function calcInitialPosition(string name, uint size)
+        internal
         view
         returns(uint x, uint y)
     {
@@ -18,7 +63,7 @@ library GameLib {
         y = uint(keccak256(abi.encodePacked(block.number,name))) % size;
     }
 
-    function _calcDensity(uint x, uint y, uint size) 
+    function calcDensity(uint x, uint y, uint size) 
 	    internal 
 	    pure
 	    returns(uint) 
@@ -44,29 +89,15 @@ library GameLib {
     }    
 
     function getResourceDensity(uint x, uint y, uint size) 
-    	external
+    	public
 	    pure
 	    returns(uint,uint,uint) 
     {
-        return(0,_calcDensity(x+5,y,size),_calcDensity(y+5,x,size));
+        return(0,calcDensity(x+5,y,size),calcDensity(y+5,x,size));
     } 
 
 
-    function getConvertionRate(uint resource, uint converterLevel, uint damage)
-        external
-        view
-        returns(uint resConverted, uint lock)
-    {
-        if (converterLevel == 2)
-            resConverted = resource / 2;
-        else
-            resConverted = resource / 4;
-
-        lock = lockConverter(converterLevel,damage);
-    }
-
-
-    function getProductionToConverter(uint[9] level, uint endUpgrade, uint converterLevel)
+    function getProductionToConverter(uint[9] level, uint endUpgrade)
         external
         view
         returns(uint graphene, uint metal)
@@ -80,11 +111,6 @@ library GameLib {
             metal = getProductionByLevel(level[8]-1);
         else
             metal = getProductionByLevel(level[8]); 
-
-        if (converterLevel == 1) {
-            graphene = graphene / 2;
-            metal = metal / 2;
-        }
     }
 
     /**
@@ -584,7 +610,6 @@ library GameLib {
         metal = metal - _percent(metal,qaim);
 
         lock = lockUpgradeResource(_level, damage, qaim);
-    
     }
 
     function getBlocksToWin()
@@ -596,12 +621,11 @@ library GameLib {
     }
 
     function getInitialWarehouse()
-        external
+        internal
         pure 
-        returns(uint, uint, uint)
+        returns(uint)
     {
-        uint s = bFisics.val(10000);
-        return(s,s,s);
+        return bFisics.val(10000);
     }
     
     function checkFleetRange(uint distance, uint fleetRange, uint mode, uint damage, bool _battle)
