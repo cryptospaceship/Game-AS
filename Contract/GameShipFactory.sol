@@ -167,12 +167,12 @@ contract GameShipFactory is GameFactory, GameEvents {
 
         setInMapPosition(_ship,gss.x,gss.y);
         
-        addUnique(id);
+        addUniqueId(_ship);
         players = players + 1;
         emit ShipStartPlayEvent(_ship,block.number);
     }
 
-    function addUnique(uint id) internal {
+    function addUniqueId(uint id) internal {
         uint i;
         for ( i = 0; i < shipsId.length; i++) {
             if (shipsId[i] == id)
