@@ -4,10 +4,15 @@ import "./Ownable.sol";
 import "./GameLib.sol";
 
 contract GameShipMap is Ownable {
-    uint[64][64]    gameMap;
-    uint size;
+    uint[64][64] gameMap;
     uint sideSize;
+    uint entropy;
     
+    constructor() public {
+        entropy = block.number;
+        sideSize = 7;
+    }
+
    /*
     * @title Get in Position
     * @dev 
@@ -26,9 +31,17 @@ contract GameShipMap is Ownable {
         ) 
     {
         id = gameMap[x][y];
-        (,grapheneDensity,metalDensity) = GameLib.getResourceDensity(x,y,size);
+        (,grapheneDensity,metalDensity) = getDensity(x,y);
     }
     
+    function getDensity(uint x, uint y)
+        internal
+        view
+        returns(uint e, uint g, uint m)
+    {
+        (e,g,m) = GameLib.getResourceDensity(x,y,4096,entropy); 
+    }
+
    /*
     * @title Get in Position
     * @dev 
@@ -39,9 +52,9 @@ contract GameShipMap is Ownable {
     function getStrategicMap(uint _x, uint _y) 
 	    external 
 	    view 
-	    returns(uint[51])
+	    returns(uint[52])
     {
-        uint[51] memory ret;
+        uint[52] memory ret;
         uint x;
         uint y; 
         uint i;
@@ -72,6 +85,7 @@ contract GameShipMap is Ownable {
         }
         ret[49] = x;
         ret[50] = y;
+        ret[51] = sideSize;
         return ret;
     }
     
@@ -108,11 +122,12 @@ contract GameShipMap is Ownable {
         return (x,y);
     }
 	
-    function changeMapSize(uint s)
+    function changeMapSize(uint players)
         internal
     {
-        size = s * s;
-        sideSize = s;
+        uint maxPlayers = (10*(sideSize * sideSize))/100;
+        if (players > maxPlayers && sideSize < 64 )
+            sideSize++;
     }
 
     function getMapPosition(uint x, uint y)

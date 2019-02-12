@@ -169,6 +169,7 @@ contract GameShipFactory is GameFactory, GameEvents {
         
         addUniqueId(_ship);
         players = players + 1;
+        changeMapSize(players);
         emit ShipStartPlayEvent(_ship,block.number);
     }
 
@@ -184,14 +185,13 @@ contract GameShipFactory is GameFactory, GameEvents {
     function removeShip(uint _ship)
         external
         onlySpaceShipContract
-        isGameReady
         returns(bool, uint)
     {
         address owner = shipsInGame[_ship].owner;
         uint points = getShipPoints(_ship);
         bool win = (ownerToShip[winner] == _ship);
 
-        require(isShipInGame[_ship]);
+        require((gameEnd == true || gameReady == true) && isShipInGame[_ship]);
 
         unsetInMapPosition(shipsInGame[_ship].x,shipsInGame[_ship].y);
         playing[owner] = false;
@@ -210,11 +210,13 @@ contract GameShipFactory is GameFactory, GameEvents {
         Warehouse storage w = gss.warehouse;
         uint stock;
 
-        (gss.x, gss.y, stock, gss.resourceDensity) = GameLib.getInitialValues(gss.shipName,sideSize);
-        
-        w.energy = stock;
-        w.graphene = stock;
-        w.metal = stock;
+        (gss.x, gss.y, stock, gss.resourceDensity) = GameLib.getInitialValues(gss.shipName,sideSize,entropy);
+
+        // Borrar a partir de aca
+        gss.buildings.level[1] = 4;
+        w.energy = 1600000;//stock;
+        w.graphene = 1600000;//stock;
+        w.metal = 1600000;//stock;
     }
 
 }

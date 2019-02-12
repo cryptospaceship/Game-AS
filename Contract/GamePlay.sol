@@ -143,12 +143,13 @@ contract GamePlay is GameShipFactory {
         isGameReady
     {
         uint balance = address(this).balance;
-        require(candidate != address(0) && endBlock <= block.number && endBlock != 0);
+        require(gameEnd == false && candidate != address(0) && endBlock <= block.number && endBlock != 0);
+
         winner = candidate;
         endBlock = 0;
         gameReady = false;
+        gameEnd = true;
         
-
         emit WinnerEvent(
             ownerToShip[winner],
             winner,
@@ -476,7 +477,7 @@ contract GamePlay is GameShipFactory {
         setInMapPosition(_ship,x,y);
         ship.x = x;
         ship.y = y;
-        (ship.resourceDensity[0],ship.resourceDensity[1],ship.resourceDensity[2]) = GameLib.getResourceDensity(x,y,size);
+        (ship.resourceDensity[0],ship.resourceDensity[1],ship.resourceDensity[2]) = getDensity(x,y);
     }    
 
     /**

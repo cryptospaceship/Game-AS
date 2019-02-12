@@ -12,6 +12,7 @@ contract GameFactory is Mortal, GameSpacialPort {
     address candidate;
     address winner;
     bool gameReady;
+    bool gameEnd;
     uint gameLaunch;
     uint shipWinner;
     uint gamePlayValue;
@@ -57,22 +58,20 @@ contract GameFactory is Mortal, GameSpacialPort {
         _;
     }
 
-    function setGameAttributes(address _shipContract, uint _startAt, uint mapSideSize)
+    function setGameAttributes(address _shipContract, uint _startAt)
         external
         onlyOwner
     {
+        require(gameEnd == false);
         setSpaceShipContract(_shipContract);
         if (_startAt == 0)
             gameLaunch = block.number;
         else
             gameLaunch = _startAt;
-
-        require(mapSideSize <= 64);
-
-        changeMapSize(mapSideSize);
         
+        gameEnd = false;
         gameReady = true;
-        gamePlayValue = 0.1 ether;
+        gamePlayValue = 0.00001 ether;
     }
 
     function setSpaceShipContract(address _address)

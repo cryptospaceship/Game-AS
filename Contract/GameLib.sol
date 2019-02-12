@@ -1,8 +1,8 @@
 pragma solidity 0.4.25;
 
 //import "./fisics/rsk.sol";
-import "./fisics/kovan.sol";
-//import "./fisics/rskTestnet.sol";
+//import "./fisics/kovan.sol";
+import "./fisics/rskTestnet.sol";
 //import "./fisics/ethereum.sol";
 //import "./fisics/poa.sol";
 
@@ -15,14 +15,14 @@ library GameLib {
      * @param size Size del mapa
      * @return Posicion x,y Stock de recursos y densidad
      */
-    function getInitialValues(string name, uint size)
+    function getInitialValues(string name, uint size, uint s)
         external
         view
         returns(uint x, uint y, uint stock, uint[3] memory density)
     {
         (x,y) = calcInitialPosition(name,size);
         stock = getInitialWarehouse();
-        (density[0],density[1],density[2]) = getResourceDensity(x,y,size);
+        (density[0],density[1],density[2]) = getResourceDensity(x,y,size,s);
     }
 
     /**
@@ -63,13 +63,13 @@ library GameLib {
         y = uint(keccak256(abi.encodePacked(block.number,name))) % size;
     }
 
-    function calcDensity(uint x, uint y, uint size) 
+    function calcDensity(uint x, uint y, uint size, uint s) 
 	    internal 
 	    pure
 	    returns(uint) 
     {
         uint8[11] memory resources = [0,45,15,12,9,7,5,4,1,1,1];
-        uint n = uint256(keccak256(abi.encodePacked(x,y))) % size;
+        uint n = uint256(keccak256(abi.encodePacked(x,y,s))) % size;
         uint i;
         uint top;
         uint botton;
@@ -88,12 +88,12 @@ library GameLib {
         return 1;
     }    
 
-    function getResourceDensity(uint x, uint y, uint size) 
+    function getResourceDensity(uint x, uint y, uint size, uint s) 
     	public
 	    pure
 	    returns(uint,uint,uint) 
     {
-        return(0,calcDensity(x+5,y,size),calcDensity(y+5,x,size));
+        return(0,calcDensity(x+5,y,size,s),calcDensity(y+5,x,size,s));
     } 
 
 
