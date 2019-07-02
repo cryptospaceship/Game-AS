@@ -18,3 +18,4 @@ Build/Utils.bin
 Build/bFisics.bin
 Build/GameEvents.bin
 Build/GameShipFactory.bin
+*.bin
