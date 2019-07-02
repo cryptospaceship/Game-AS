@@ -2,6 +2,6 @@ pragma solidity 0.4.25;
 
 library bFisics {
     function val(uint v) internal pure returns(uint) {
-        return v/10;
+        return v/30;
     }
 }

@@ -18,7 +18,18 @@ contract GameFactory is Mortal, GameSpacialPort {
     uint gamePlayValue;
     uint endBlock;
     uint players;
+    uint balance;
 
+    /**
+     * Increase reward
+     */
+    function () external payable {}
+
+    /*
+     * Agregar
+     *  - shipWinner
+     *  - si el juego termino
+     */
     function getGame() 
         external
         view
@@ -30,7 +41,9 @@ contract GameFactory is Mortal, GameSpacialPort {
             uint _reward,
             uint _players,
             address _candidate,
-            address _winner
+            address _winner,
+            uint _shipWinner,
+            bool _gameEnd
         )
     {
         _gameReady = gameReady;
@@ -39,23 +52,28 @@ contract GameFactory is Mortal, GameSpacialPort {
         _gameLaunch = gameLaunch;
         _gamePlayValue = gamePlayValue;
         _endBlock = endBlock;
-        _reward = address(this).balance;
+        if (gameEnd) {
+            _reward = balance;
+        } else {
+            _reward = address(this).balance;
+        }
         _players = players;
+        _gameEnd = gameEnd;
+        _shipWinner = shipWinner;
     }
 
-    modifier isGameReady() {
-        require(gameReady);
-        _;
-    }
-
-    modifier isGameStart() {
-        require(isGameStarted());
+    modifier isGamePlayable() {
+        require(isPlayable());
         _;
     }
 
     modifier onlySpaceShipContract() {
         require(msg.sender == spaceShipContract);
         _;
+    }
+
+    function isPlayable() internal view returns(bool) {
+        return (gameReady && block.number >= gameLaunch && gameEnd == false);
     }
 
     function setGameAttributes(address _shipContract, uint _startAt)
@@ -83,14 +101,6 @@ contract GameFactory is Mortal, GameSpacialPort {
          */
         spaceShipContract = _address; 
         spaceShipInterface = SpaceShipInterface(_address);
-    }
-
-    function isGameStarted() 
-        internal
-        view
-        returns(bool)
-    {
-        return (gameReady && block.number >= gameLaunch);
     }
 }
 

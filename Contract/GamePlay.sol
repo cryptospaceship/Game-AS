@@ -52,11 +52,7 @@ contract GamePlay is GameShipFactory {
     }
 
     modifier onlyShipOwner(uint _ship) {
-        require(
-            isShipInGame[_ship] &&
-            msg.sender == shipsInGame[_ship].owner &&
-            !shipsInGame[_ship].destroyed
-        );
+        require(isShipOwner(_ship));
         _;
     }
 
@@ -102,6 +98,13 @@ contract GamePlay is GameShipFactory {
         _;
     }
 
+    modifier targetable(uint _to) {
+        require(
+            isTargetable(_to)
+        );
+        _;
+    } 
+
     modifier onlyIfCanBuildFleet(uint _ship) {
         require(
             canBuildFleet(_ship)
@@ -140,41 +143,41 @@ contract GamePlay is GameShipFactory {
 
     function claimVictory()
         external
-        isGameReady
+        isGamePlayable
     {
         uint balance = address(this).balance;
         require(gameEnd == false && candidate != address(0) && endBlock <= block.number && endBlock != 0);
 
         winner = candidate;
         endBlock = 0;
-        gameReady = false;
         gameEnd = true;
-        
+        shipWinner = ownerToShip[winner];
+
         emit WinnerEvent(
-            ownerToShip[winner],
+            shipWinner,
             winner,
             balance
         );
         
-        shipsInGame[ownerToShip[winner]].points += 500;
+        shipsInGame[shipWinner].points += 500;
         candidate.transfer(balance);
     }
 
     function repairShip(uint _from, uint _to, uint units)
         external
-        isGameStart
+        isGamePlayable
         onlyShipOwner(_from)
         onlyWithReparer(_from)
         woprReady(_from)
         notInPort(_from)
-        notInPort(_to)
+        targetable(_to)
     {
         repairShipInternal(_from,_to,units);
     }
 
     function convertResource(uint _ship, uint src, uint dst, uint n)
         external
-        isGameStart
+        isGamePlayable
         onlyShipOwner(_ship)
         onlyWithConverter(_ship)
         woprReady(_ship)
@@ -206,6 +209,9 @@ contract GamePlay is GameShipFactory {
         from.lock.wopr = lock;
         collectResourcesAndSub(_from,energy,graphene,metal);
         to.damage = to.damage - units;
+
+        emit RepairShipEvent(_from,_to,units);
+
         from.points++;
     }
 
@@ -252,7 +258,7 @@ contract GamePlay is GameShipFactory {
 
     function setProductionResourcesConverter(uint _ship, uint graphene, uint metal)
         external
-        isGameStart
+        isGamePlayable
         onlyShipOwner(_ship)
         onlyWithConverter(_ship)
         notInPort(_ship)
@@ -281,11 +287,11 @@ contract GamePlay is GameShipFactory {
 
     function attackShip(uint _from, uint _to, bool battle)
         external
-        isGameStart
+        isGamePlayable
         onlyShipOwner(_from)
         onlyWithFleet(_from)
         fleetReady(_from)
-        notInPort(_to)
+        targetable(_to)
         notInPort(_from)
     {
         attackShipInternal(_from,_to,battle);
@@ -294,7 +300,7 @@ contract GamePlay is GameShipFactory {
 
     function attackPort(uint _from, uint _port)
         external
-        isGameStart
+        isGamePlayable
         onlyShipOwner(_from)
         onlyWithFleet(_from)
         fleetReady(_from)
@@ -307,12 +313,12 @@ contract GamePlay is GameShipFactory {
 
     function fireCannon(uint _from, uint _to, uint _target)
         external
-        isGameStart
+        isGamePlayable
         onlyShipOwner(_from)
         onlyWithCannon(_from)
         woprReady(_from)
         notInPort(_from)
-        notInPort(_to)
+        targetable(_to)
     {
 
         fireCannonInternal(_from,_to, _target);
@@ -321,12 +327,12 @@ contract GamePlay is GameShipFactory {
 
     function sendResources(uint _from, uint _to, uint energy, uint graphene, uint metal)
         external
-        isGameStart
+        isGamePlayable
         onlyShipOwner(_from)
         onlyWithFleet(_from)
         fleetReady(_from)
         notInPort(_from)
-        notInPort(_to)
+        targetable(_to)
     {
         sendResourcesInternal(_from,_to,energy,graphene,metal);
     }
@@ -334,7 +340,7 @@ contract GamePlay is GameShipFactory {
 
     function upgradeBuilding(uint _ship, uint _type, uint _role)
         external
-        isGameStart
+        isGamePlayable
         onlyShipOwner(_ship)
         upgradeBuildingFinish(_ship)
         validBuildingType(_type)
@@ -344,7 +350,7 @@ contract GamePlay is GameShipFactory {
 
     function upgradeResource(uint _ship, uint _type, uint _index)
         external
-        isGameStart
+        isGamePlayable
         onlyShipOwner(_ship)
         upgradeResourceFinish(_ship)
         validResourceType(_type,_index)
@@ -382,7 +388,7 @@ contract GamePlay is GameShipFactory {
 
     function designFleet(uint _ship, uint _attack, uint _defense, uint _distance, uint _load)
         external
-        isGameStart
+        isGamePlayable
         onlyShipOwner(_ship)
         onlyWithHangar(_ship)
     {
@@ -411,7 +417,7 @@ contract GamePlay is GameShipFactory {
 
     function buildFleet(uint _ship, uint size)
         external
-        isGameStart
+        isGamePlayable
         onlyShipOwner(_ship)
         onlyWithHangar(_ship)
         onlyIfCanBuildFleet(_ship)
@@ -440,7 +446,7 @@ contract GamePlay is GameShipFactory {
 
     function moveTo(uint _ship, uint x, uint y)
         external
-        isGameStart
+        isGamePlayable
         onlyShipOwner(_ship)
         movemmentUnlocked(_ship)
         validMoveMode(_ship)
@@ -487,7 +493,7 @@ contract GamePlay is GameShipFactory {
      */
     function landTo(uint _ship, uint x, uint y, bool defense)
         external
-        isGameStart
+        isGamePlayable
         onlyShipOwner(_ship)
         movemmentUnlocked(_ship)
         validMoveMode(_ship)
@@ -538,7 +544,7 @@ contract GamePlay is GameShipFactory {
 
     function changeMode(uint _ship, uint _mode) 
         external
-        isGameStart
+        isGamePlayable
         onlyShipOwner(_ship)
         changeModeUnlocked(_ship)
         validMode(_mode)
@@ -647,7 +653,7 @@ contract GamePlay is GameShipFactory {
      */
     function disassembleFleet(uint _ship, uint size)
         external
-        isGameStart
+        isGamePlayable
         onlyShipOwner(_ship)
     {
         GameSpaceShip storage ship = shipsInGame[_ship];
@@ -827,6 +833,14 @@ contract GamePlay is GameShipFactory {
         
     }
 
+    function isTargetable(uint _to) 
+        internal 
+        view 
+        returns(bool) 
+    {
+        return (shipsInGame[_to].inPort == false && shipsInGame[_to].destroyed == false);
+    }
+
     function getFleetProduction(uint _ship)
         internal
         view
@@ -938,18 +952,17 @@ contract GamePlay is GameShipFactory {
         internal
     {
         GameSpaceShip storage to = shipsInGame[_to];
-                    
         if (to.damage + damage >= 100) {
             to.destroyed = true;
-            emit FireCannonEvent(_from,_to,100,true);
+            to.damage = 100;
+            unsetInMapPosition(to.x, to.y);
         }
         else {
             collectResourcesAndSub(_to, 0,0,0);
             to.damage = to.damage + damage;
-  
-            emit FireCannonEvent(_from,_to,to.damage,false);
             cutToMaxFleet(_to);
         }
+        emit FireCannonEvent(_from,_to,damage,to.destroyed);
     }
 
     function fireCannonInternalAccuracy(uint _from, uint _to, uint target, uint damage)
@@ -1205,7 +1218,7 @@ contract GamePlay is GameShipFactory {
                 /*
                  * Calcula el daño realizado
                  */
-                damage = ( shipsInGame[_from].fleet.fleetConfig.attack * aRemain ) / 20000;
+                damage = ( shipsInGame[_from].fleet.fleetConfig.attack * aRemain ) / 13500;
             } else
                 shipsInGame[_to].points++;
         }
@@ -1783,6 +1796,18 @@ contract GamePlay is GameShipFactory {
         returns(bool)
     {
         return (getCannonLevel(_ship) > 0);
+    }
+
+    function isShipOwner(uint _ship) 
+        internal 
+        view 
+        returns(bool) 
+    {
+        return (
+            isShipInGame[_ship] &&
+            msg.sender == shipsInGame[_ship].owner &&
+            !shipsInGame[_ship].destroyed
+        );
     }
 
     function withConverter(uint _ship)

@@ -15,6 +15,12 @@ contract GameEvents {
         uint _m
     );
 
+    event RepairShipEvent(
+        uint _from,
+        uint _to,
+        uint _units
+    );
+
     event ShipStartPlayEvent(
         uint _from,
         uint _block

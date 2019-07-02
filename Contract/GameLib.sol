@@ -121,7 +121,7 @@ library GameLib {
         view
         returns(uint, uint)
     {
-        return(lockChangeMode(damage,qaim),bFisics.val(2000));
+        return(lockChangeMode(damage,qaim),bFisics.val(10000)); 
     }
 
 
@@ -178,7 +178,7 @@ library GameLib {
             if (inRange) {
                 damage = getCannonDamage(level,distance,true,isOtherReparer);
                 cost = getFireCannonCost(true);
-                lock = bFisics.val(400); // Esto no me gusta
+                lock = bFisics.val(2000); // Esto no me gusta
                 if (shipDamage > 0) {
                     lock = ((100 + shipDamage) * lock) / 100;
                 }
@@ -189,7 +189,7 @@ library GameLib {
             if (inRange) {
                 damage = getCannonDamage(level,distance,false,isOtherReparer);
                 cost = getFireCannonCost(false);
-                lock = bFisics.val(300); // Esto no me gusta
+                lock = bFisics.val(1500); // Esto no me gusta
                 if (shipDamage > 0) {
                     lock = ((100 + shipDamage) * lock) / 100;
                 }
@@ -425,7 +425,7 @@ library GameLib {
         uint _block = block.number;
         uint batches = (size/48) + 1;
         uint ret;
-        ret = batches * (5-hangarLevel) * bFisics.val(80);
+        ret = batches * (5-hangarLevel) * bFisics.val(400);
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
         }
@@ -443,7 +443,7 @@ library GameLib {
         pure
         returns(bool)
     {
-        uint p = _attack + _defense + (_distance * 6) + (_load/80);
+        uint p = _attack + _defense + (_distance * 6) + (_load/bFisics.val(400));
         uint points = qaim + getPointsByHangarLevel(hangarLevel);
         return ( p <= points && p != 0);
     }
@@ -504,9 +504,9 @@ library GameLib {
             uint m
         )
     {
-        e = bFisics.val(20) * (_attack + _defense + (_distance*6) + (_load/bFisics.val(80)));
-        g = bFisics.val(70) * (_defense + (_distance*6)) + (bFisics.val(50)*_attack) + (bFisics.val(30)*(_load/bFisics.val(80)));
-        m = bFisics.val(70) * (_attack + (_load/bFisics.val(80))) + (bFisics.val(50)*_defense) + (bFisics.val(30)*(_distance*6));
+        e = bFisics.val(100) * (_attack + _defense + (_distance*6) + (_load/bFisics.val(400)));
+        g = bFisics.val(350) * (_defense + (_distance*6)) + (bFisics.val(250)*_attack) + (bFisics.val(150)*(_load/bFisics.val(400)));
+        m = bFisics.val(350) * (_attack + (_load/bFisics.val(400))) + (bFisics.val(250)*_defense) + (bFisics.val(150)*(_distance*6));
     }
 
     function getFleetValue(uint _attack, uint _defense, uint _distance, uint _load, uint _size)
@@ -530,7 +530,7 @@ library GameLib {
         pure
         returns(uint)
     {
-        uint24[5] memory warehouseStorage = [10000, 50000, 150000, 1300000, 16000000];
+        uint32[5] memory warehouseStorage = [50000, 250000, 750000, 6500000, 80000000];
         return bFisics.val(warehouseStorage[level]);
     }
     
@@ -539,7 +539,8 @@ library GameLib {
         view 
         returns(uint energy, uint graphene, uint metal, uint lock)
     {
-        uint24[5] memory buildingCost = [0,5292,26168,120965,559164];
+        
+        uint24[5] memory buildingCost = [0,26460,130840,604825,2795820];
         /*
             Nuevos Costos Propuestos
             6933   Level 1
@@ -572,12 +573,13 @@ library GameLib {
         view
         returns(uint energy, uint graphene, uint metal, uint lock)
     {
-        uint24[11] memory resourceCost = [0,1200,2520,5292,12171,26168,56263,120965,260076,559164,1202204];
+        uint24[11] memory resourceCost = [0,6000,12600,26460,60855,130840,281315,604825,1300380,2795820,6011020];
+
         /*
             2584738 Level 11
             5557187 Level 12
             ----------------
-            Nuevos Costos Propuestos
+            Nuevos Costos Propuestos Multiplicar x 5
             1500    Level 1
             3225    Level 2
             6933    Level 3 
@@ -617,7 +619,7 @@ library GameLib {
         pure
         returns(uint)
     {
-        return bFisics.val(20000);
+        return bFisics.val(100000);
     }
 
     function getInitialWarehouse()
@@ -625,7 +627,7 @@ library GameLib {
         pure 
         returns(uint)
     {
-        return bFisics.val(10000);
+        return bFisics.val(50000);
     }
     
     function checkFleetRange(uint distance, uint fleetRange, uint mode, uint damage, bool _battle)
@@ -663,7 +665,7 @@ library GameLib {
         returns(uint fleetType)
     {
         uint _d = _distance * 6;
-        uint _l = _load/bFisics.val(80);
+        uint _l = _load/bFisics.val(400);
         if ( _attack > _defense && _attack > _d && _attack > _l ) {
             fleetType = 1;
         }
@@ -726,8 +728,8 @@ library GameLib {
         returns (uint)
     {
         if (accuracy)
-            return bFisics.val(3000000);
-        return bFisics.val(2000000);
+            return bFisics.val(15000000);
+        return bFisics.val(10000000);
     }
 
     function getRepairCost(uint units)
@@ -735,9 +737,9 @@ library GameLib {
         pure
         returns(uint energy, uint graphene, uint metal)
     {
-        energy = bFisics.val(100000) * units;
-        graphene = bFisics.val(200000) * units;
-        metal = bFisics.val(200000) * units;
+        energy = bFisics.val(500000) * units;
+        graphene = bFisics.val(1000000) * units;
+        metal = bFisics.val(1000000) * units;
     }
 
     function portCombatCalcInternal(uint aPoints, uint aSize, uint[5] dPoints, uint[5] dSize)
@@ -1003,7 +1005,7 @@ library GameLib {
         returns(uint)
     {
         uint ret;
-        ret = level * bFisics.val(160);
+        ret = level * bFisics.val(800);
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
         }
@@ -1019,7 +1021,7 @@ library GameLib {
         returns(uint)
     {
         uint ret;
-        ret = level * bFisics.val(400);
+        ret = level * bFisics.val(2000);
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
         }
@@ -1035,7 +1037,7 @@ library GameLib {
         returns(uint)
     {
         uint ret;
-        ret = bFisics.val(280);
+        ret = bFisics.val(1400);
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
         }
@@ -1052,9 +1054,9 @@ library GameLib {
     {
         uint ret;
         if (level == 1)
-            ret = bFisics.val(600);
+            ret = bFisics.val(3000);
         else
-            ret = bFisics.val(450);
+            ret = bFisics.val(2250);
 
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
@@ -1069,9 +1071,9 @@ library GameLib {
     {
         uint ret;
         if (level == 1)
-            ret = bFisics.val(700);
+            ret = bFisics.val(3500);
         else
-            ret = bFisics.val(500);
+            ret = bFisics.val(2500);
 
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
@@ -1086,7 +1088,7 @@ library GameLib {
     {
         uint8[4] memory movemmentPerMode = [4,6,3,0];
         uint ret;
-        ret = (distance*bFisics.val(400)/movemmentPerMode[mode]);
+        ret = (distance*bFisics.val(2000)/movemmentPerMode[mode]);
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;
         }
@@ -1104,10 +1106,10 @@ library GameLib {
     {
         uint ret;
         if (!_battle) {
-            ret = (distance * bFisics.val(25));
+            ret = (distance * bFisics.val(125));
         }
         else {
-            ret = (distance * bFisics.val(100));
+            ret = (distance * bFisics.val(500));
         }
         if (damage > 0) {
             ret = ((100 + damage) * ret) / 100;

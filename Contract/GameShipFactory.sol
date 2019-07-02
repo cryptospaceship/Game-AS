@@ -78,6 +78,7 @@ contract GameShipFactory is GameFactory, GameEvents {
         bool inPort;
         bool isPortDefender;
         bool destroyed;
+        bool pointsCollected;
     }
 
 
@@ -103,12 +104,12 @@ contract GameShipFactory is GameFactory, GameEvents {
     function placeShip(uint _ship, uint qaim_0, uint qaim_1)
         external
         payable
-        isGameReady
     {
         bool inGame;
         GameSpaceShip storage gss = shipsInGame[_ship];
 
         require(
+            gameReady == true &&
             gamePlayValue == msg.value && 
             isShipInGame[_ship] == false &&
             qaim_0 < 6 && qaim_1 < 6
@@ -189,16 +190,35 @@ contract GameShipFactory is GameFactory, GameEvents {
     {
         address owner = shipsInGame[_ship].owner;
         uint points = getShipPoints(_ship);
-        bool win = (ownerToShip[winner] == _ship);
+        bool win = (shipWinner == _ship);
 
-        require((gameEnd == true || gameReady == true) && isShipInGame[_ship]);
+        // Revisar
+        require(isShipInGame[_ship]);
 
-        unsetInMapPosition(shipsInGame[_ship].x,shipsInGame[_ship].y);
-        playing[owner] = false;
-        delete(ownerToShip[owner]);
-        delete(shipsInGame[_ship]);
-        isShipInGame[_ship] = false;
-        players = players - 1;
+        if (gameEnd == true) {
+            if (shipsInGame[_ship].pointsCollected == true) {
+                points = 0;
+                win = false; 
+            }
+            else {
+                shipsInGame[_ship].pointsCollected = true;
+            }
+        } else {
+            if (shipsInGame[_ship].destroyed == false || shipsInGame[_ship].inPort == false)
+                unsetInMapPosition(shipsInGame[_ship].x,shipsInGame[_ship].y);
+            
+            if (spacialPort.owner == owner) {
+                // Si el dueño del planeta se va del juego
+                candidate = address(0);
+                spacialPort.owner = address(0);
+                endBlock = 0;
+            }
+            playing[owner] = false;
+            delete(ownerToShip[owner]);
+            delete(shipsInGame[_ship]); 
+            isShipInGame[_ship] = false;
+            players = players - 1;
+        }
 
         emit ShipEndPlayEvent(_ship,block.number);
         return (win,points);
