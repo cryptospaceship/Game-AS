@@ -19,3 +19,9 @@ Build/bFisics.bin
 Build/GameEvents.bin
 Build/GameShipFactory.bin
 *.bin
+Build/GamePlay.bin
+Build/GamePlay.abi
+Build/GameLib.bin
+Build/GameEvents.bin
+Build/GameEvents.abi
+Build/bFisics.bin

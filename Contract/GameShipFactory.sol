@@ -204,7 +204,7 @@ contract GameShipFactory is GameFactory, GameEvents {
                 shipsInGame[_ship].pointsCollected = true;
             }
         } else {
-            if (shipsInGame[_ship].destroyed == false || shipsInGame[_ship].inPort == false)
+            if (shipsInGame[_ship].destroyed == false && shipsInGame[_ship].inPort == false)
                 unsetInMapPosition(shipsInGame[_ship].x,shipsInGame[_ship].y);
             
             if (spacialPort.owner == owner) {
